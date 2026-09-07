@@ -962,3 +962,63 @@ html[data-theme="comida"] .face-back {
   .grain-live, .boot-mark, .boot-bar span, .face-back::after, .app.is-shake { animation: none !important; }
   .boot { transition: none; }
 }
+
+
+/* Menu fits short viewports — foot always visible */
+.screen-menu {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-height: 100%;
+  min-height: 0;
+  width: min(560px, 100%);
+  gap: 0;
+}
+.screen-menu .hero {
+  flex: 0 0 auto;
+  margin-bottom: 14px;
+}
+.screen-menu .panel {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  gap: 14px;
+  padding: 16px;
+}
+.screen-menu .menu-foot,
+.screen-menu .amb-note {
+  flex: 0 0 auto;
+}
+.screen-menu .amb-note {
+  margin-top: 6px;
+}
+
+@media (max-height: 740px) {
+  .screen-menu .hero { margin-bottom: 8px; }
+  .screen-menu .logo { font-size: clamp(1.8rem, 6vh, 2.6rem); }
+  .screen-menu .tagline { margin-top: 4px; font-size: 0.92rem; }
+  .screen-menu .eyebrow { margin-bottom: 4px; font-size: 0.65rem; }
+  .screen-menu .panel { gap: 10px; padding: 12px; }
+  .screen-menu .field { gap: 6px; }
+  .screen-menu .field-label { font-size: 0.7rem; }
+  .screen-menu .seg-btn { padding: 8px 6px; }
+  .screen-menu .theme-card { padding: 6px 4px; gap: 4px; }
+  .screen-menu .theme-preview { width: 40px; height: 40px; border-radius: 10px; }
+  .screen-menu .theme-name { font-size: 0.72rem; }
+  .screen-menu .btn-lg { min-height: 46px; font-size: 1rem; }
+  .screen-menu .mode-hint { font-size: 0.8rem; }
+  .screen-menu .menu-foot { margin-top: 10px; gap: 10px; }
+  .screen-menu .amb-note { font-size: 0.68rem; margin-top: 4px; }
+}
+
+@media (max-height: 620px) {
+  .screen-menu .tagline,
+  .screen-menu .amb-note,
+  .screen-menu .mode-hint { display: none; }
+  .screen-menu .hero { margin-bottom: 6px; }
+  .screen-menu .panel { gap: 8px; padding: 10px; }
+  .theme-grid-5 { grid-template-columns: repeat(5, 1fr); }
+  .screen-menu .theme-preview { width: 32px; height: 32px; }
+  .screen-menu .theme-name { font-size: 0.65rem; }
+}
