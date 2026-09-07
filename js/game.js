@@ -263,6 +263,7 @@
 
     el.board.classList.toggle("is-hard", diff.id === "hard");
     el.board.style.gridTemplateColumns = `repeat(${layout.cols}, minmax(0, 1fr))`;
+    el.board.style.gridTemplateRows = `repeat(${layout.rows}, minmax(0, 1fr))`;
     el.board.innerHTML = "";
 
     deck.forEach((card, index) => {
@@ -484,6 +485,7 @@
     el.overlayLose.hidden = true;
     el.game.hidden = true;
     el.menu.hidden = false;
+    document.getElementById("app").classList.remove("is-playing");
     updateMenuBest();
     document.getElementById("btn-start").focus();
   }
@@ -495,6 +497,8 @@
     el.overlay.hidden = true;
     el.overlayLose.hidden = true;
     el.game.hidden = false;
+    document.getElementById("app").classList.add("is-playing");
+    fitViewport();
     buildBoard();
   }
 
@@ -517,6 +521,17 @@
       e.preventDefault();
       onCardClick(idx);
     }
+  }
+
+
+  function fitViewport() {
+    const vv = window.visualViewport;
+    const h = vv ? vv.height : window.innerHeight;
+    document.documentElement.style.setProperty("--app-height", `${Math.round(h)}px`);
+    // Chrome Android: barra inferior ~48–64px além do safe-area em muitos aparelhos
+    const chromeGuess = Math.max(0, window.innerHeight - h);
+    const bottom = Math.max(chromeGuess, 8);
+    document.documentElement.style.setProperty("--chrome-bottom", `${Math.round(bottom)}px`);
   }
 
   function bind() {
@@ -572,4 +587,10 @@
   updateModeHint();
   bind();
   updateMenuBest();
+  fitViewport();
+  window.addEventListener("resize", fitViewport);
+  if (window.visualViewport) {
+    visualViewport.addEventListener("resize", fitViewport);
+    visualViewport.addEventListener("scroll", fitViewport);
+  }
 })();
