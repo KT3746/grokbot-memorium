@@ -1,24 +1,20 @@
 # MEMÓRIUM
 
-Jogo da memória premium no navegador. Original, em português do Brasil. Funciona no PC e no celular.
+Jogo da memória premium no navegador. Original, em português do Brasil. PC e celular.
 
 ## Jogar
 
-**Live:** https://kt3746.github.io/memorium/?v=2
+**Live:** https://kt3746.github.io/memorium/?v=3
 
-1. Escolha a dificuldade (Fácil / Médio / Difícil) e o tema (Cosmos / Flora / Runas).
-2. Vire duas cartas. Pares ficam abertos; erros viram de volta.
-3. Use **?** para uma dica (+2 movimentos).
-4. Quebre seu próprio recorde (salvo no navegador).
+- Modos: **Clássico** e **Relógio** (cada par soma tempo)
+- Temas: Cosmos, Flora, Runas, Neon, Comida
+- Dificuldades: Fácil / Médio / Difícil
+- Confete na vitória, dica, recordes locais
+
+**Portal:** https://kt3746.github.io/sala-de-jogos/?v=13
 
 ## Rodar local
-
-Abra `index.html` num servidor estático, por exemplo:
 
 ```bash
 python3 -m http.server 8080
 ```
-
-## Deploy
-
-GitHub Pages (branch `main`, pasta `/`). Após mudanças, use cache-bust `?v=` nos assets e na URL.

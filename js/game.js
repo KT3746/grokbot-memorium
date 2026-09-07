@@ -1,8 +1,8 @@
 (function () {
   const DIFFS = {
-    easy: { id: "easy", label: "Fácil", cols: 4, rows: 3, pairs: 6 },
-    medium: { id: "medium", label: "Médio", cols: 4, rows: 4, pairs: 8 },
-    hard: { id: "hard", label: "Difícil", cols: 6, rows: 4, pairs: 12 }
+    easy: { id: "easy", label: "Fácil", cols: 4, rows: 3, pairs: 6, timedStart: 55, timedBonus: 4 },
+    medium: { id: "medium", label: "Médio", cols: 4, rows: 4, pairs: 8, timedStart: 70, timedBonus: 5 },
+    hard: { id: "hard", label: "Difícil", cols: 6, rows: 4, pairs: 12, timedStart: 95, timedBonus: 6 }
   };
 
   const WIN_TITLES = [
@@ -14,6 +14,7 @@
   ];
 
   const state = {
+    mode: "classic",
     difficulty: "medium",
     theme: "cosmos",
     cards: [],
@@ -26,10 +27,12 @@
     startedAt: 0,
     timerId: null,
     elapsed: 0,
+    timeLeft: 0,
     hintUsed: false,
     focusIndex: 0,
     missTimer: null,
-    hintTimer: null
+    hintTimer: null,
+    ended: false
   };
 
   const el = {
@@ -37,14 +40,20 @@
     game: document.getElementById("screen-game"),
     board: document.getElementById("board"),
     overlay: document.getElementById("overlay-win"),
+    overlayLose: document.getElementById("overlay-lose"),
     moves: document.getElementById("stat-moves"),
     time: document.getElementById("stat-time"),
+    timeLabel: document.getElementById("stat-time-label"),
     streak: document.getElementById("stat-streak"),
     menuBest: document.getElementById("menu-best"),
+    modeHint: document.getElementById("mode-hint"),
+    tip: document.getElementById("game-tip"),
+    winEyebrow: document.getElementById("win-eyebrow"),
     winTitle: document.getElementById("win-title"),
     winStars: document.getElementById("win-stars"),
     winMoves: document.getElementById("win-moves"),
     winTime: document.getElementById("win-time"),
+    winTimeLabel: document.getElementById("win-time-label"),
     winStreak: document.getElementById("win-streak"),
     winBest: document.getElementById("win-best"),
     muteMenu: document.getElementById("btn-mute-menu"),
@@ -53,7 +62,7 @@
   };
 
   function bestKey() {
-    return `memorium-best-${state.difficulty}-${state.theme}`;
+    return `memorium-best-${state.mode}-${state.difficulty}-${state.theme}`;
   }
 
   function loadBest() {
@@ -67,10 +76,19 @@
 
   function saveBest(record) {
     const prev = loadBest();
-    const better =
-      !prev ||
-      record.moves < prev.moves ||
-      (record.moves === prev.moves && record.time < prev.time);
+    let better = !prev;
+    if (prev) {
+      if (state.mode === "timed") {
+        better =
+          (record.cleared && !prev.cleared) ||
+          (record.cleared && prev.cleared && (record.timeLeft > prev.timeLeft ||
+            (record.timeLeft === prev.timeLeft && record.moves < prev.moves)));
+      } else {
+        better =
+          record.moves < prev.moves ||
+          (record.moves === prev.moves && record.time < prev.time);
+      }
+    }
     if (better) {
       try { localStorage.setItem(bestKey(), JSON.stringify(record)); } catch (_) {}
       return true;
@@ -79,9 +97,10 @@
   }
 
   function formatTime(sec) {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
+    const s = Math.max(0, sec | 0);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, "0")}`;
   }
 
   function shuffle(arr) {
@@ -102,6 +121,14 @@
     });
   }
 
+  function updateModeHint() {
+    if (!el.modeHint) return;
+    el.modeHint.textContent =
+      state.mode === "timed"
+        ? "Contra o relógio: cada par soma segundos. Zerar o tempo = derrota."
+        : "Vire duas cartas. Pares ficam abertos.";
+  }
+
   function updateMenuBest() {
     const best = loadBest();
     if (!best) {
@@ -109,7 +136,14 @@
       return;
     }
     el.menuBest.hidden = false;
-    el.menuBest.textContent = `Melhor (${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): ${best.moves} mov. em ${formatTime(best.time)}`;
+    const modeLabel = state.mode === "timed" ? "Relógio" : "Clássico";
+    if (state.mode === "timed") {
+      el.menuBest.textContent = best.cleared
+        ? `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): sobrou ${formatTime(best.timeLeft)}`
+        : `Melhor tentativa ainda sem vitória neste modo.`;
+    } else {
+      el.menuBest.textContent = `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): ${best.moves} mov. em ${formatTime(best.time)}`;
+    }
   }
 
   function setSeg(groupId, attr, value) {
@@ -119,15 +153,6 @@
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-checked", on ? "true" : "false");
     });
-  }
-
-  function startTimer() {
-    stopTimer();
-    state.startedAt = Date.now() - state.elapsed * 1000;
-    state.timerId = setInterval(() => {
-      state.elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
-      el.time.textContent = formatTime(state.elapsed);
-    }, 250);
   }
 
   function stopTimer() {
@@ -150,7 +175,6 @@
     const narrow = window.matchMedia("(max-width: 520px)").matches;
     let cols = diff.cols;
     let rows = diff.rows;
-    // No celular, difícil fica 4x6 em vez de 6x4 (cartas legíveis)
     if (narrow && diff.id === "hard") {
       cols = 4;
       rows = 6;
@@ -158,8 +182,46 @@
     return { cols, rows };
   }
 
+  function paintTime() {
+    if (state.mode === "timed") {
+      el.time.textContent = formatTime(state.timeLeft);
+      el.time.classList.toggle("is-urgent", state.timeLeft <= 10);
+    } else {
+      el.time.textContent = formatTime(state.elapsed);
+      el.time.classList.remove("is-urgent");
+    }
+  }
+
+  function startTimer() {
+    stopTimer();
+    if (state.mode === "timed") {
+      state.startedAt = Date.now();
+      state.timerId = setInterval(() => {
+        if (state.ended) return;
+        state.timeLeft -= 1;
+        paintTime();
+        if (state.timeLeft <= 0) {
+          state.timeLeft = 0;
+          paintTime();
+          loseGame();
+        }
+      }, 1000);
+    } else {
+      state.startedAt = Date.now() - state.elapsed * 1000;
+      state.timerId = setInterval(() => {
+        state.elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+        paintTime();
+      }, 250);
+    }
+  }
+
   function starCount(moves, pairs) {
     const perfect = pairs;
+    if (state.mode === "timed") {
+      if (state.timeLeft >= DIFFS[state.difficulty].timedStart * 0.35) return 3;
+      if (state.timeLeft >= 8) return 2;
+      return 1;
+    }
     if (moves <= perfect + 2) return 3;
     if (moves <= perfect * 2) return 2;
     return 1;
@@ -168,6 +230,9 @@
   function buildBoard() {
     clearPendingCardTimers();
     stopTimer();
+    if (window.MemoriumConfetti) MemoriumConfetti.clear();
+    state.ended = false;
+
     const diff = DIFFS[state.difficulty];
     const layout = layoutForBoard(diff);
     const theme = window.MEMORIUM_THEMES[state.theme];
@@ -185,16 +250,16 @@
     state.streak = 0;
     state.bestStreak = 0;
     state.elapsed = 0;
+    state.timeLeft = diff.timedStart;
     state.hintUsed = false;
     state.focusIndex = 0;
 
     el.moves.textContent = "0";
-    el.time.textContent = "0:00";
     el.streak.textContent = "0";
+    el.timeLabel.textContent = state.mode === "timed" ? "Restante" : "Tempo";
+    paintTime();
     el.hint.disabled = false;
     el.hint.style.opacity = "1";
-    el.hint.setAttribute("aria-label", "Dica: revela um par (+2 movimentos)");
-    el.hint.title = "Dica (+2 movimentos)";
 
     el.board.classList.toggle("is-hard", diff.id === "hard");
     el.board.style.gridTemplateColumns = `repeat(${layout.cols}, minmax(0, 1fr))`;
@@ -215,6 +280,18 @@
       el.board.appendChild(btn);
     });
 
+    try {
+      if (!localStorage.getItem("memorium-tip-seen")) {
+        el.tip.hidden = false;
+        localStorage.setItem("memorium-tip-seen", "1");
+        setTimeout(() => { el.tip.hidden = true; }, 4500);
+      } else {
+        el.tip.hidden = true;
+      }
+    } catch (_) {
+      el.tip.hidden = true;
+    }
+
     const first = el.board.querySelector(".card");
     if (first) first.focus({ preventScroll: true });
   }
@@ -224,8 +301,7 @@
   }
 
   function onCardClick(index) {
-    if (state.lock) return;
-    const card = state.cards[index];
+    if (state.lock || state.ended) return;
     const node = getCardEl(index);
     if (!node || node.classList.contains("is-flipped") || node.classList.contains("is-matched")) return;
 
@@ -264,6 +340,13 @@
       nb.setAttribute("aria-label", `Carta ${b + 1}, par encontrado`);
       state.flipped = [];
       state.lock = false;
+
+      if (state.mode === "timed") {
+        state.timeLeft += DIFFS[state.difficulty].timedBonus;
+        paintTime();
+        spawnBonusPop(`+${DIFFS[state.difficulty].timedBonus}s`);
+      }
+
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
     } else {
       MemoriumAudio.miss();
@@ -284,8 +367,16 @@
     }
   }
 
+  function spawnBonusPop(text) {
+    const pop = document.createElement("div");
+    pop.className = "bonus-pop";
+    pop.textContent = text;
+    el.game.appendChild(pop);
+    setTimeout(() => pop.remove(), 900);
+  }
+
   function useHint() {
-    if (state.hintUsed || state.lock || state.flipped.length > 0) return;
+    if (state.hintUsed || state.lock || state.ended || state.flipped.length > 0) return;
     const unmatched = state.cards
       .map((c, i) => ({ c, i }))
       .filter(({ i }) => {
@@ -294,7 +385,6 @@
       });
     if (unmatched.length < 2) return;
 
-    // Escolhe um par completo ainda fechado
     const byPair = new Map();
     for (const item of unmatched) {
       const list = byPair.get(item.c.pairId) || [];
@@ -314,52 +404,84 @@
     el.hint.style.opacity = "0.4";
     MemoriumAudio.click();
 
-    pair.forEach(({ i }) => {
-      const n = getCardEl(i);
-      n.classList.add("is-flipped");
-    });
+    pair.forEach(({ i }) => getCardEl(i).classList.add("is-flipped"));
     state.lock = true;
     state.hintTimer = setTimeout(() => {
       state.hintTimer = null;
       pair.forEach(({ i }) => {
         const n = getCardEl(i);
-        if (n && n.isConnected && !n.classList.contains("is-matched")) {
-          n.classList.remove("is-flipped");
-        }
+        if (n && n.isConnected && !n.classList.contains("is-matched")) n.classList.remove("is-flipped");
       });
       state.lock = false;
     }, 1100);
   }
 
   function endGame() {
+    if (state.ended) return;
+    state.ended = true;
     stopTimer();
     MemoriumAudio.win();
+    if (window.MemoriumConfetti) {
+      MemoriumConfetti.burst({ count: 140 });
+      setTimeout(() => MemoriumConfetti.burst({ count: 60, y: window.innerHeight * 0.55 }), 280);
+    }
+
     const pairs = DIFFS[state.difficulty].pairs;
     const stars = starCount(state.moves, pairs);
-    const record = { moves: state.moves, time: state.elapsed, streak: state.bestStreak };
+    const record =
+      state.mode === "timed"
+        ? { cleared: true, timeLeft: state.timeLeft, moves: state.moves, streak: state.bestStreak }
+        : { moves: state.moves, time: state.elapsed, streak: state.bestStreak };
     const isNew = saveBest(record);
     const best = loadBest();
 
+    el.winEyebrow.textContent = state.mode === "timed" ? "relógio dominado" : "vitória";
     el.winTitle.textContent = WIN_TITLES[Math.floor(Math.random() * WIN_TITLES.length)];
     el.winStars.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
     el.winStars.setAttribute("aria-label", `${stars} de 3 estrelas`);
     el.winMoves.textContent = String(state.moves);
-    el.winTime.textContent = formatTime(state.elapsed);
+    el.winTimeLabel.textContent = state.mode === "timed" ? "Sobra" : "Tempo";
+    el.winTime.textContent = state.mode === "timed" ? formatTime(state.timeLeft) : formatTime(state.elapsed);
     el.winStreak.textContent = String(state.bestStreak);
-    el.winBest.textContent = isNew
-      ? "Novo recorde neste modo!"
-      : best
-        ? `Melhor: ${best.moves} mov. em ${formatTime(best.time)}`
-        : "";
+    if (state.mode === "timed") {
+      el.winBest.textContent = isNew
+        ? "Novo recorde neste modo!"
+        : best && best.cleared
+          ? `Melhor sobra: ${formatTime(best.timeLeft)}`
+          : "";
+    } else {
+      el.winBest.textContent = isNew
+        ? "Novo recorde neste modo!"
+        : best
+          ? `Melhor: ${best.moves} mov. em ${formatTime(best.time)}`
+          : "";
+    }
 
+    el.overlayLose.hidden = true;
     el.overlay.hidden = false;
     document.getElementById("btn-replay").focus();
+  }
+
+  function loseGame() {
+    if (state.ended) return;
+    state.ended = true;
+    stopTimer();
+    clearPendingCardTimers();
+    state.lock = true;
+    MemoriumAudio.miss();
+    saveBest({ cleared: false, timeLeft: 0, moves: state.moves, streak: state.bestStreak });
+    el.overlay.hidden = true;
+    el.overlayLose.hidden = false;
+    document.getElementById("btn-replay-lose").focus();
   }
 
   function showMenu() {
     clearPendingCardTimers();
     stopTimer();
+    if (window.MemoriumConfetti) MemoriumConfetti.clear();
+    state.ended = true;
     el.overlay.hidden = true;
+    el.overlayLose.hidden = true;
     el.game.hidden = true;
     el.menu.hidden = false;
     updateMenuBest();
@@ -371,6 +493,7 @@
     MemoriumAudio.click();
     el.menu.hidden = true;
     el.overlay.hidden = true;
+    el.overlayLose.hidden = true;
     el.game.hidden = false;
     buildBoard();
   }
@@ -397,6 +520,16 @@
   }
 
   function bind() {
+    document.getElementById("mode-group").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-mode]");
+      if (!btn) return;
+      state.mode = btn.dataset.mode;
+      setSeg("mode-group", "mode", state.mode);
+      MemoriumAudio.click();
+      updateModeHint();
+      updateMenuBest();
+    });
+
     document.getElementById("diff-group").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-diff]");
       if (!btn) return;
@@ -419,12 +552,14 @@
     document.getElementById("btn-back").addEventListener("click", showMenu);
     document.getElementById("btn-replay").addEventListener("click", startGame);
     document.getElementById("btn-menu").addEventListener("click", showMenu);
+    document.getElementById("btn-replay-lose").addEventListener("click", startGame);
+    document.getElementById("btn-menu-lose").addEventListener("click", showMenu);
     el.hint.addEventListener("click", useHint);
 
     const toggleMute = () => {
       MemoriumAudio.setMuted(!MemoriumAudio.isMuted());
       updateMuteUI();
-      MemoriumAudio.click();
+      if (!MemoriumAudio.isMuted()) MemoriumAudio.click();
     };
     el.muteMenu.addEventListener("click", toggleMute);
     el.mute.addEventListener("click", toggleMute);
@@ -434,6 +569,7 @@
 
   MemoriumAudio.loadMute();
   updateMuteUI();
+  updateModeHint();
   bind();
   updateMenuBest();
 })();

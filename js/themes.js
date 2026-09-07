@@ -76,8 +76,49 @@ function runasFaces() {
 }
 
 /** @type {Record<string, Theme>} */
+
+function neonFaces() {
+  const c = ["#ff00e5", "#00f5ff", "#ffe600", "#39ff14", "#ff006e", "#7b2ff7", "#00ffa3", "#ff6b00", "#4cc9f0", "#f72585", "#b8f200", "#c77dff"];
+  const shapes = [
+    (col) => `<rect x="20" y="20" width="60" height="60" rx="8" fill="none" stroke="${col}" stroke-width="5"/><rect x="35" y="35" width="30" height="30" rx="4" fill="${col}"/>`,
+    (col) => `<circle cx="50" cy="50" r="28" fill="none" stroke="${col}" stroke-width="5"/><circle cx="50" cy="50" r="10" fill="${col}"/><circle cx="50" cy="50" r="38" fill="none" stroke="${col}" stroke-width="2" opacity="0.5"/>`,
+    (col) => `<path d="M50 12 L58 42 L90 42 L64 60 L74 90 L50 72 L26 90 L36 60 L10 42 L42 42 Z" fill="none" stroke="${col}" stroke-width="4"/><circle cx="50" cy="52" r="8" fill="${col}"/>`,
+    (col) => `<path d="M50 15 L85 80 H15 Z" fill="none" stroke="${col}" stroke-width="5"/><path d="M50 35 L70 70 H30 Z" fill="${col}" opacity="0.85"/>`,
+    (col) => `<path d="M20 50 L50 20 L80 50 L50 80 Z" fill="none" stroke="${col}" stroke-width="5"/><path d="M35 50 L50 35 L65 50 L50 65 Z" fill="${col}"/>`,
+    (col) => `<rect x="18" y="40" width="64" height="20" rx="4" fill="${col}"/><rect x="40" y="18" width="20" height="64" rx="4" fill="${col}"/>`,
+    (col) => `<path d="M25 75 Q25 25 50 25 Q75 25 75 75" fill="none" stroke="${col}" stroke-width="6"/><circle cx="50" cy="70" r="8" fill="${col}"/>`,
+    (col) => `<circle cx="32" cy="40" r="14" fill="none" stroke="${col}" stroke-width="4"/><circle cx="68" cy="40" r="14" fill="none" stroke="${col}" stroke-width="4"/><circle cx="50" cy="68" r="14" fill="none" stroke="${col}" stroke-width="4"/><circle cx="50" cy="48" r="6" fill="${col}"/>`,
+    (col) => `<path d="M50 10 C70 30 85 45 50 90 C15 45 30 30 50 10 Z" fill="none" stroke="${col}" stroke-width="5"/><circle cx="50" cy="48" r="8" fill="${col}"/>`,
+    (col) => `<polyline points="18,70 35,30 50,60 65,25 82,70" fill="none" stroke="${col}" stroke-width="5" stroke-linejoin="round"/><circle cx="35" cy="30" r="5" fill="${col}"/><circle cx="65" cy="25" r="5" fill="${col}"/>`,
+    (col) => `<rect x="22" y="22" width="56" height="56" rx="28" fill="none" stroke="${col}" stroke-width="5"/><path d="M35 50 H65 M50 35 V65" stroke="${col}" stroke-width="5"/>`,
+    (col) => `<path d="M15 50 H85 M50 15 V85" stroke="${col}" stroke-width="4"/><circle cx="50" cy="50" r="16" fill="none" stroke="${col}" stroke-width="5"/><circle cx="50" cy="50" r="5" fill="${col}"/>`
+  ];
+  return shapes.map((fn, i) => SVG.wrap(fn(c[i % c.length])));
+}
+
+function comidaFaces() {
+  const c = ["#ff6b4a", "#ffd166", "#06d6a0", "#ef476f", "#118ab2", "#f4a261", "#e9c46a", "#2a9d8f", "#e76f51", "#90be6d", "#f94144", "#577590"];
+  const shapes = [
+    (col) => `<ellipse cx="50" cy="58" rx="32" ry="24" fill="${col}"/><path d="M30 48 Q50 20 70 48" fill="${col}"/><circle cx="40" cy="55" r="3" fill="#5c3317"/><circle cx="58" cy="60" r="3" fill="#5c3317"/><circle cx="50" cy="48" r="2.5" fill="#5c3317"/>`,
+    (col) => `<circle cx="50" cy="52" r="28" fill="${col}"/><path d="M35 40 Q50 55 65 40" fill="none" stroke="#fff" stroke-width="3"/><ellipse cx="50" cy="28" rx="10" ry="6" fill="#86efac"/>`,
+    (col) => `<path d="M22 62 C22 30 78 30 78 62 Z" fill="${col}"/><ellipse cx="50" cy="62" rx="28" ry="10" fill="${col}"/><circle cx="50" cy="48" r="6" fill="#fff" opacity="0.5"/>`,
+    (col) => `<ellipse cx="50" cy="55" rx="30" ry="26" fill="${col}"/><path d="M28 45 Q50 70 72 45" fill="#fff" opacity="0.35"/><circle cx="42" cy="50" r="4" fill="#fff"/><circle cx="58" cy="52" r="3" fill="#fff"/>`,
+    (col) => `<rect x="28" y="30" width="44" height="48" rx="8" fill="${col}"/><rect x="34" y="38" width="32" height="8" rx="2" fill="#fff" opacity="0.4"/><rect x="34" y="52" width="32" height="8" rx="2" fill="#fff" opacity="0.4"/><circle cx="50" cy="22" r="8" fill="#86efac"/>`,
+    (col) => `<path d="M50 18 C72 18 82 40 70 70 C60 88 40 88 30 70 C18 40 28 18 50 18 Z" fill="${col}"/><path d="M50 18 C58 35 58 50 50 70" fill="none" stroke="#fff" stroke-width="3" opacity="0.5"/>`,
+    (col) => `<ellipse cx="50" cy="60" rx="34" ry="18" fill="${col}"/><path d="M20 55 Q50 25 80 55" fill="#ffd166"/><path d="M30 52 Q50 35 70 52" fill="${col}" opacity="0.7"/>`,
+    (col) => `<circle cx="50" cy="50" r="30" fill="${col}"/><circle cx="50" cy="50" r="18" fill="#fff3"/><circle cx="50" cy="50" r="8" fill="#fff"/><path d="M50 20 L54 40 L50 36 L46 40 Z" fill="#86efac"/>`,
+    (col) => `<path d="M25 70 L35 30 H65 L75 70 Z" fill="${col}"/><ellipse cx="50" cy="30" rx="18" ry="8" fill="#ffd166"/><path d="M40 45 H60 M38 55 H62" stroke="#fff" stroke-width="3" opacity="0.45"/>`,
+    (col) => `<ellipse cx="50" cy="58" rx="26" ry="22" fill="${col}"/><circle cx="50" cy="38" r="14" fill="${col}"/><circle cx="44" cy="36" r="2.5" fill="#1a1200"/><circle cx="56" cy="36" r="2.5" fill="#1a1200"/><path d="M45 44 Q50 48 55 44" fill="none" stroke="#1a1200" stroke-width="2"/>`,
+    (col) => `<path d="M50 85 C20 60 25 25 50 30 C75 25 80 60 50 85 Z" fill="${col}"/><circle cx="50" cy="48" r="6" fill="#fff" opacity="0.35"/>`,
+    (col) => `<rect x="18" y="40" width="64" height="28" rx="6" fill="${col}"/><circle cx="34" cy="54" r="6" fill="#fff"/><circle cx="50" cy="54" r="6" fill="#fff"/><circle cx="66" cy="54" r="6" fill="#fff"/><path d="M28 40 L40 22 H60 L72 40" fill="#ffd166"/>`
+  ];
+  return shapes.map((fn, i) => SVG.wrap(fn(c[i % c.length])));
+}
+
 window.MEMORIUM_THEMES = {
   cosmos: { id: "cosmos", name: "Cosmos", faces: cosmosFaces() },
   flora: { id: "flora", name: "Flora", faces: floraFaces() },
-  runas: { id: "runas", name: "Runas", faces: runasFaces() }
+  runas: { id: "runas", name: "Runas", faces: runasFaces() },
+  neon: { id: "neon", name: "Neon", faces: neonFaces() },
+  comida: { id: "comida", name: "Comida", faces: comidaFaces() }
 };

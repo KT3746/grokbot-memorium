@@ -127,6 +127,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
+.theme-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+@media (max-width: 560px) {
+  .theme-grid-5 { grid-template-columns: repeat(3, 1fr); }
+}
 .theme-card {
   display: grid;
   gap: 8px;
@@ -195,7 +201,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   color: var(--muted);
   font-size: 0.9rem;
 }
-.menu-foot { display: flex; justify-content: center; margin-top: 18px; }
+/* menu-foot redefined below */
 
 .icon-btn {
   width: 44px; height: 44px;
@@ -415,4 +421,76 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     transition-duration: 0.01ms !important;
   }
   .card { transition: none; }
+}
+
+.theme-preview[data-preview="neon"] {
+  background: radial-gradient(circle at 40% 30%, #ff00e5, #0a0220 65%);
+  box-shadow: 0 0 16px rgba(0, 245, 255, 0.35);
+}
+.theme-preview[data-preview="comida"] {
+  background: radial-gradient(circle at 60% 30%, #ffd166, #7a2e1a 70%);
+}
+.mode-hint {
+  margin: -4px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+.menu-foot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.portal-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.portal-link:hover { color: var(--accent); }
+.stat-value.is-urgent {
+  color: var(--danger);
+  animation: blinkUrgent 0.7s ease infinite;
+}
+@keyframes blinkUrgent {
+  50% { opacity: 0.45; }
+}
+.tip {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--accent);
+  background: rgba(240,180,41,0.08);
+  border: 1px solid rgba(240,180,41,0.25);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.bonus-pop {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: var(--good);
+  text-shadow: 0 4px 18px rgba(0,0,0,0.5);
+  animation: bonusUp 0.9s ease forwards;
+  pointer-events: none;
+  z-index: 5;
+}
+@keyframes bonusUp {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translate(-50%, -28px); }
+}
+.screen-game { position: relative; }
+.lose-copy {
+  color: var(--muted);
+  margin: 0 0 16px;
+  line-height: 1.4;
 }

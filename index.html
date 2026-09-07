@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=2" />
+  <link rel="stylesheet" href="css/styles.css?v=3" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f1a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%23f0b429' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23f0b429'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -20,7 +20,6 @@
   </div>
 
   <div id="app" class="app">
-    <!-- MENU -->
     <section id="screen-menu" class="screen screen-menu" aria-label="Menu principal">
       <header class="hero">
         <p class="eyebrow">jogo da memória</p>
@@ -29,6 +28,14 @@
       </header>
 
       <div class="panel">
+        <div class="field">
+          <span class="field-label" id="label-mode">Modo</span>
+          <div class="seg" role="radiogroup" aria-labelledby="label-mode" id="mode-group">
+            <button type="button" class="seg-btn is-active" role="radio" aria-checked="true" data-mode="classic">Clássico</button>
+            <button type="button" class="seg-btn" role="radio" aria-checked="false" data-mode="timed">Relógio</button>
+          </div>
+        </div>
+
         <div class="field">
           <span class="field-label" id="label-diff">Dificuldade</span>
           <div class="seg" role="radiogroup" aria-labelledby="label-diff" id="diff-group">
@@ -40,7 +47,7 @@
 
         <div class="field">
           <span class="field-label" id="label-theme">Tema</span>
-          <div class="theme-grid" role="radiogroup" aria-labelledby="label-theme" id="theme-group">
+          <div class="theme-grid theme-grid-5" role="radiogroup" aria-labelledby="label-theme" id="theme-group">
             <button type="button" class="theme-card is-active" role="radio" aria-checked="true" data-theme="cosmos">
               <span class="theme-preview" data-preview="cosmos" aria-hidden="true"></span>
               <span class="theme-name">Cosmos</span>
@@ -53,9 +60,18 @@
               <span class="theme-preview" data-preview="runas" aria-hidden="true"></span>
               <span class="theme-name">Runas</span>
             </button>
+            <button type="button" class="theme-card" role="radio" aria-checked="false" data-theme="neon">
+              <span class="theme-preview" data-preview="neon" aria-hidden="true"></span>
+              <span class="theme-name">Neon</span>
+            </button>
+            <button type="button" class="theme-card" role="radio" aria-checked="false" data-theme="comida">
+              <span class="theme-preview" data-preview="comida" aria-hidden="true"></span>
+              <span class="theme-name">Comida</span>
+            </button>
           </div>
         </div>
 
+        <p class="mode-hint" id="mode-hint">Vire duas cartas. Pares ficam abertos.</p>
         <button type="button" class="btn btn-primary btn-lg" id="btn-start">Jogar</button>
         <p class="best-line" id="menu-best" hidden></p>
       </div>
@@ -64,37 +80,37 @@
         <button type="button" class="icon-btn" id="btn-mute-menu" aria-label="Silenciar sons" title="Som">
           <span class="icon-sound" aria-hidden="true"></span>
         </button>
+        <a class="portal-link" href="https://kt3746.github.io/sala-de-jogos/?v=13">← Sala de Jogos</a>
       </footer>
     </section>
 
-    <!-- GAME -->
     <section id="screen-game" class="screen screen-game" hidden aria-label="Partida">
       <header class="hud">
         <button type="button" class="icon-btn" id="btn-back" aria-label="Voltar ao menu">←</button>
         <div class="hud-stats">
           <div class="stat"><span class="stat-label">Movimentos</span><span class="stat-value" id="stat-moves">0</span></div>
-          <div class="stat"><span class="stat-label">Tempo</span><span class="stat-value" id="stat-time">0:00</span></div>
+          <div class="stat"><span class="stat-label" id="stat-time-label">Tempo</span><span class="stat-value" id="stat-time">0:00</span></div>
           <div class="stat"><span class="stat-label">Combo</span><span class="stat-value" id="stat-streak">0</span></div>
         </div>
         <div class="hud-actions">
-          <button type="button" class="icon-btn" id="btn-hint" aria-label="Dica (+2 movimentos)">?</button>
+          <button type="button" class="icon-btn" id="btn-hint" aria-label="Dica: revela um par (+2 movimentos)" title="Dica (+2 movimentos)">?</button>
           <button type="button" class="icon-btn" id="btn-mute" aria-label="Silenciar sons">
             <span class="icon-sound" aria-hidden="true"></span>
           </button>
         </div>
       </header>
+      <p class="tip" id="game-tip" hidden>Toque em duas cartas. Iguais = par. Erradas viram de volta.</p>
       <div id="board" class="board" role="grid" aria-label="Tabuleiro de cartas"></div>
     </section>
 
-    <!-- WIN -->
     <div id="overlay-win" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="win-title">
       <div class="overlay-card">
-        <p class="eyebrow">vitória</p>
+        <p class="eyebrow" id="win-eyebrow">vitória</p>
         <h2 id="win-title">Memória afiada</h2>
         <div class="stars" id="win-stars" aria-label="Avaliação"></div>
         <dl class="win-stats">
           <div><dt>Movimentos</dt><dd id="win-moves">0</dd></div>
-          <div><dt>Tempo</dt><dd id="win-time">0:00</dd></div>
+          <div><dt id="win-time-label">Tempo</dt><dd id="win-time">0:00</dd></div>
           <div><dt>Melhor combo</dt><dd id="win-streak">0</dd></div>
         </dl>
         <p class="best-line" id="win-best"></p>
@@ -104,10 +120,23 @@
         </div>
       </div>
     </div>
+
+    <div id="overlay-lose" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="lose-title">
+      <div class="overlay-card">
+        <p class="eyebrow">tempo esgotado</p>
+        <h2 id="lose-title">O relógio venceu</h2>
+        <p class="lose-copy">Faltaram pares. Tente de novo — cada acerto soma segundos.</p>
+        <div class="overlay-actions">
+          <button type="button" class="btn btn-primary" id="btn-replay-lose">Tentar de novo</button>
+          <button type="button" class="btn btn-ghost" id="btn-menu-lose">Menu</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script src="js/themes.js?v=2" defer></script>
-  <script src="js/audio.js?v=2" defer></script>
-  <script src="js/game.js?v=2" defer></script>
+  <script src="js/themes.js?v=3" defer></script>
+  <script src="js/audio.js?v=3" defer></script>
+  <script src="js/confetti.js?v=3" defer></script>
+  <script src="js/game.js?v=3" defer></script>
 </body>
 </html>
