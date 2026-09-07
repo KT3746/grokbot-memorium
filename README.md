@@ -4,7 +4,7 @@ Jogo da memória premium no navegador. Original, em português do Brasil. PC e c
 
 ## Jogar
 
-**Live:** https://kt3746.github.io/memorium/?v=6
+**Live:** https://kt3746.github.io/memorium/?v=7
 
 - Modos: **Clássico** e **Relógio** (cada par soma tempo)
 - Temas: Cosmos, Flora, Runas, Neon, Comida

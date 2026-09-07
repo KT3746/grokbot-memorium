@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=6" />
+  <link rel="stylesheet" href="css/styles.css?v=7" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f1a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%23f0b429' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23f0b429'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -17,6 +17,17 @@
     <div class="orb orb-a"></div>
     <div class="orb orb-b"></div>
     <div class="orb orb-c"></div>
+    <div class="vignette"></div>
+    <div class="grain-live"></div>
+  </div>
+
+  <div id="boot" class="boot" role="presentation">
+    <div class="boot-inner">
+      <div class="boot-mark" aria-hidden="true"></div>
+      <p class="boot-kicker">apresenta</p>
+      <h1 class="boot-title">MEMÓRIUM</h1>
+      <div class="boot-bar"><span></span></div>
+    </div>
   </div>
 
   <div id="app" class="app">
@@ -90,7 +101,14 @@
         <button type="button" class="icon-btn" id="btn-back" aria-label="Voltar ao menu">←</button>
         <div class="hud-stats">
           <div class="stat"><span class="stat-label">Movimentos</span><span class="stat-value" id="stat-moves">0</span></div>
-          <div class="stat"><span class="stat-label" id="stat-time-label">Tempo</span><span class="stat-value" id="stat-time">0:00</span></div>
+          <div class="stat stat-progress">
+            <svg class="progress-ring" viewBox="0 0 36 36" aria-hidden="true">
+              <circle class="progress-ring-bg" cx="18" cy="18" r="15"></circle>
+              <circle class="progress-ring-fg" id="progress-fg" cx="18" cy="18" r="15"></circle>
+            </svg>
+            <span class="stat-label" id="stat-time-label">Tempo</span>
+            <span class="stat-value" id="stat-time">0:00</span>
+          </div>
           <div class="stat"><span class="stat-label">Combo</span><span class="stat-value" id="stat-streak">0</span></div>
         </div>
         <div class="hud-actions">
@@ -100,6 +118,7 @@
           </button>
         </div>
       </header>
+      <p class="pairs-line" id="pairs-line" aria-live="polite">0 / 0 pares</p>
       <p class="tip" id="game-tip" hidden>Toque em duas cartas. Iguais = par. Erradas viram de volta.</p>
       <div id="board" class="board" role="grid" aria-label="Tabuleiro de cartas"></div>
     </section>
@@ -135,9 +154,10 @@
     </div>
   </div>
 
-  <script src="js/themes.js?v=6" defer></script>
-  <script src="js/audio.js?v=6" defer></script>
-  <script src="js/confetti.js?v=6" defer></script>
-  <script src="js/game.js?v=6" defer></script>
+  <script src="js/themes.js?v=7" defer></script>
+  <script src="js/audio.js?v=7" defer></script>
+  <script src="js/confetti.js?v=7" defer></script>
+  <script src="js/fx.js?v=7" defer></script>
+  <script src="js/game.js?v=7" defer></script>
 </body>
 </html>

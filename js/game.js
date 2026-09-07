@@ -58,7 +58,9 @@
     winBest: document.getElementById("win-best"),
     muteMenu: document.getElementById("btn-mute-menu"),
     mute: document.getElementById("btn-mute"),
-    hint: document.getElementById("btn-hint")
+    hint: document.getElementById("btn-hint"),
+    pairsLine: document.getElementById("pairs-line"),
+    progressFg: document.getElementById("progress-fg")
   };
 
   function bestKey() {
@@ -182,6 +184,16 @@
     return { cols, rows };
   }
 
+  function updateProgress() {
+    const pairs = DIFFS[state.difficulty].pairs;
+    if (el.pairsLine) el.pairsLine.textContent = `${state.matches} / ${pairs} pares`;
+    if (el.progressFg) {
+      const c = 94.2;
+      const pct = pairs ? state.matches / pairs : 0;
+      el.progressFg.style.strokeDashoffset = String(c * (1 - pct));
+    }
+  }
+
   function paintTime() {
     if (state.mode === "timed") {
       el.time.textContent = formatTime(state.timeLeft);
@@ -231,6 +243,7 @@
     clearPendingCardTimers();
     stopTimer();
     if (window.MemoriumConfetti) MemoriumConfetti.clear();
+    if (window.MemoriumFX) MemoriumFX.clear();
     state.ended = false;
 
     const diff = DIFFS[state.difficulty];
@@ -261,7 +274,9 @@
     paintTime();
     el.hint.disabled = false;
     el.hint.style.opacity = "1";
+    updateProgress();
 
+    el.board.classList.remove("is-dim");
     el.board.classList.toggle("is-hard", diff.id === "hard");
     el.board.style.gridTemplateColumns = `repeat(${layout.cols}, minmax(0, 1fr))`;
     el.board.style.gridTemplateRows = `repeat(${layout.rows}, minmax(0, 1fr))`;
@@ -352,7 +367,11 @@
         flash.className = "match-flash";
         node.appendChild(flash);
         setTimeout(() => flash.remove(), 560);
+        if (window.MemoriumFX) MemoriumFX.sparkAt(node);
       });
+      updateProgress();
+      const left = DIFFS[state.difficulty].pairs - state.matches;
+      if (left > 0 && left <= 3) el.board.classList.add("is-dim");
       na.disabled = true;
       nb.disabled = true;
       na.setAttribute("aria-label", `Carta ${a + 1}, par encontrado`);
@@ -374,6 +393,11 @@
     } else {
       MemoriumAudio.miss();
       try { navigator.vibrate?.([12, 40, 12]); } catch (_) {}
+      const app = document.getElementById("app");
+      app.classList.remove("is-shake");
+      void app.offsetWidth;
+      app.classList.add("is-shake");
+      setTimeout(() => app.classList.remove("is-shake"), 300);
       state.streak = 0;
       el.streak.textContent = "0";
       document.querySelector(".hud")?.classList.remove("is-hot");
@@ -489,6 +513,7 @@
     }
 
     el.overlayLose.hidden = true;
+    el.overlay.classList.add("is-cinematic");
     el.overlay.hidden = false;
     document.getElementById("btn-replay").focus();
   }
@@ -510,8 +535,10 @@
     clearPendingCardTimers();
     stopTimer();
     if (window.MemoriumConfetti) MemoriumConfetti.clear();
+    if (window.MemoriumFX) MemoriumFX.clear();
     state.ended = true;
     el.overlay.hidden = true;
+    el.overlay.classList.remove("is-cinematic");
     el.overlayLose.hidden = true;
     el.game.hidden = true;
     el.menu.hidden = false;
@@ -632,6 +659,12 @@
   updateMenuBest();
   fitViewport();
   window.addEventListener("resize", fitViewport);
+  const boot = document.getElementById("boot");
+  if (boot) {
+    const finishBoot = () => boot.classList.add("is-done");
+    setTimeout(finishBoot, 1500);
+    boot.addEventListener("click", finishBoot, { once: true });
+  }
   if (window.visualViewport) {
     visualViewport.addEventListener("resize", fitViewport);
     visualViewport.addEventListener("scroll", fitViewport);
