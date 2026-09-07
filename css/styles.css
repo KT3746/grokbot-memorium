@@ -751,3 +751,37 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .logo, .btn-primary::after, .card.is-deal, .screen-menu, .stars { animation: none !important; }
 }
+
+/* Theme accent tints */
+html[data-theme="cosmos"] { --accent: #8eb6ff; --accent-2: #7c5cff; }
+html[data-theme="flora"] { --accent: #7dffb3; --accent-2: #34d399; }
+html[data-theme="runas"] { --accent: #ff8a5b; --accent-2: #f0b429; }
+html[data-theme="neon"] { --accent: #00f5ff; --accent-2: #ff00e5; }
+html[data-theme="comida"] { --accent: #ffd166; --accent-2: #ef476f; }
+
+html[data-theme="neon"] .face-back {
+  background:
+    linear-gradient(145deg, rgba(0,245,255,0.18), transparent 40%),
+    radial-gradient(circle at 50% 30%, rgba(255,0,229,0.28), transparent 55%),
+    linear-gradient(165deg, #1a1030, #080414 70%);
+}
+html[data-theme="flora"] .face-back {
+  background:
+    linear-gradient(145deg, rgba(125,255,179,0.16), transparent 40%),
+    radial-gradient(circle at 50% 30%, rgba(52,211,153,0.25), transparent 55%),
+    linear-gradient(165deg, #143028, #081510 70%);
+}
+html[data-theme="comida"] .face-back {
+  background:
+    linear-gradient(145deg, rgba(255,209,102,0.18), transparent 40%),
+    radial-gradient(circle at 50% 30%, rgba(239,71,111,0.22), transparent 55%),
+    linear-gradient(165deg, #3a2218, #140c08 70%);
+}
+
+.amb-note {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  opacity: 0.85;
+}

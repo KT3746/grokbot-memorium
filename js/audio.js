@@ -2,6 +2,12 @@ window.MemoriumAudio = (function () {
   let ctx = null;
   let muted = false;
   let master = null;
+  let sfxGain = null;
+  let ambGain = null;
+  let ambNodes = [];
+  let ambRunning = false;
+  let ambWanted = false;
+  let ambLevel = 0.045;
 
   function ensure() {
     if (!ctx) {
@@ -9,16 +15,22 @@ window.MemoriumAudio = (function () {
       if (!AC) return null;
       ctx = new AC();
       master = ctx.createGain();
-      master.gain.value = 0.9;
+      master.gain.value = 1;
       master.connect(ctx.destination);
+      sfxGain = ctx.createGain();
+      sfxGain.gain.value = 0.95;
+      sfxGain.connect(master);
+      ambGain = ctx.createGain();
+      ambGain.gain.value = 0.0001;
+      ambGain.connect(master);
     }
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
 
-  function dest() {
+  function destSfx() {
     ensure();
-    return master || ctx.destination;
+    return sfxGain || master || ctx.destination;
   }
 
   function tone(freq, dur, type, gainVal, when, slideTo) {
@@ -38,7 +50,7 @@ window.MemoriumAudio = (function () {
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(filter);
     filter.connect(g);
-    g.connect(dest());
+    g.connect(destSfx());
     osc.start(t0);
     osc.stop(t0 + dur + 0.03);
   }
@@ -61,18 +73,116 @@ window.MemoriumAudio = (function () {
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     src.connect(f);
     f.connect(g);
-    g.connect(dest());
+    g.connect(destSfx());
     src.start(t0);
     src.stop(t0 + dur + 0.02);
+  }
+
+  function stopAmbientNodes() {
+    ambNodes.forEach((n) => {
+      try { n.stop(); } catch (_) {}
+      try { n.disconnect(); } catch (_) {}
+    });
+    ambNodes = [];
+    ambRunning = false;
+  }
+
+  function startAmbientGraph() {
+    const c = ensure();
+    if (!c || muted || ambRunning) return;
+    const freqs = [110, 164.81, 220, 277.18];
+    const filter = c.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 680;
+    filter.Q.value = 0.7;
+    filter.connect(ambGain);
+
+    freqs.forEach((f, i) => {
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      const lfo = c.createOscillator();
+      const lfoG = c.createGain();
+      osc.type = i % 2 ? "triangle" : "sine";
+      osc.frequency.value = f;
+      g.gain.value = 0.12 / freqs.length;
+      lfo.frequency.value = 0.05 + i * 0.03;
+      lfoG.gain.value = 0.04;
+      lfo.connect(lfoG);
+      lfoG.connect(g.gain);
+      osc.connect(g);
+      g.connect(filter);
+      osc.start();
+      lfo.start();
+      ambNodes.push(osc, lfo);
+    });
+
+    // soft shimmer noise bed
+    const frames = c.sampleRate * 2;
+    const buf = c.createBuffer(1, frames, c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
+    const noise = c.createBufferSource();
+    noise.buffer = buf;
+    noise.loop = true;
+    const nf = c.createBiquadFilter();
+    nf.type = "bandpass";
+    nf.frequency.value = 420;
+    nf.Q.value = 0.6;
+    const ng = c.createGain();
+    ng.gain.value = 0.035;
+    noise.connect(nf);
+    nf.connect(ng);
+    ng.connect(filter);
+    noise.start();
+    ambNodes.push(noise);
+
+    ambRunning = true;
+    const target = ambLevel;
+    ambGain.gain.cancelScheduledValues(c.currentTime);
+    ambGain.gain.setValueAtTime(Math.max(ambGain.gain.value, 0.0001), c.currentTime);
+    ambGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, target), c.currentTime + 1.2);
+  }
+
+  function applyAmbientState() {
+    const c = ensure();
+    if (!c) return;
+    if (muted || !ambWanted) {
+      if (ambRunning) {
+        ambGain.gain.cancelScheduledValues(c.currentTime);
+        ambGain.gain.setValueAtTime(Math.max(ambGain.gain.value, 0.0001), c.currentTime);
+        ambGain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.6);
+        setTimeout(stopAmbientNodes, 700);
+      }
+      return;
+    }
+    startAmbientGraph();
+    ambGain.gain.cancelScheduledValues(c.currentTime);
+    ambGain.gain.setValueAtTime(Math.max(ambGain.gain.value, 0.0001), c.currentTime);
+    ambGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, ambLevel), c.currentTime + 0.8);
   }
 
   return {
     unlock() { ensure(); },
     isMuted() { return muted; },
-    setMuted(v) { muted = !!v; try { localStorage.setItem("memorium-muted", muted ? "1" : "0"); } catch (_) {} },
+    setMuted(v) {
+      muted = !!v;
+      try { localStorage.setItem("memorium-muted", muted ? "1" : "0"); } catch (_) {}
+      applyAmbientState();
+    },
     loadMute() {
       try { muted = localStorage.getItem("memorium-muted") === "1"; } catch (_) {}
       return muted;
+    },
+    setAmbient(on) {
+      ambWanted = !!on;
+      applyAmbientState();
+    },
+    setAmbientLevel(level) {
+      ambLevel = Math.max(0.0001, level);
+      if (ambRunning && !muted && ambWanted && ctx) {
+        ambGain.gain.cancelScheduledValues(ctx.currentTime);
+        ambGain.gain.linearRampToValueAtTime(ambLevel, ctx.currentTime + 0.4);
+      }
     },
     flip() {
       tone(520, 0.06, "triangle", 0.06);

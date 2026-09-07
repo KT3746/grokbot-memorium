@@ -364,6 +364,10 @@
         state.timeLeft += DIFFS[state.difficulty].timedBonus;
         paintTime();
         spawnBonusPop(`+${DIFFS[state.difficulty].timedBonus}s`);
+      } else if (state.streak >= 2) {
+        spawnBonusPop(`Combo ×${state.streak}`);
+      } else {
+        spawnBonusPop("Par!");
       }
 
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
@@ -394,6 +398,12 @@
     pop.textContent = text;
     el.game.appendChild(pop);
     setTimeout(() => pop.remove(), 900);
+  }
+
+  function ensureAmbient() {
+    MemoriumAudio.unlock();
+    MemoriumAudio.setAmbient(true);
+    MemoriumAudio.setAmbientLevel(document.getElementById("app").classList.contains("is-playing") ? 0.018 : 0.045);
   }
 
   function useHint() {
@@ -506,18 +516,24 @@
     el.game.hidden = true;
     el.menu.hidden = false;
     document.getElementById("app").classList.remove("is-playing");
+    MemoriumAudio.setAmbientLevel(0.045);
+    MemoriumAudio.setAmbient(true);
     updateMenuBest();
     document.getElementById("btn-start").focus();
   }
 
   function startGame() {
     MemoriumAudio.unlock();
+    ensureAmbient();
     MemoriumAudio.click();
     el.menu.hidden = true;
     el.overlay.hidden = true;
     el.overlayLose.hidden = true;
     el.game.hidden = false;
     document.getElementById("app").classList.add("is-playing");
+    document.documentElement.dataset.theme = state.theme;
+    MemoriumAudio.setAmbientLevel(0.018);
+    MemoriumAudio.setAmbient(true);
     fitViewport();
     buildBoard();
   }
@@ -560,6 +576,7 @@
       if (!btn) return;
       state.mode = btn.dataset.mode;
       setSeg("mode-group", "mode", state.mode);
+      ensureAmbient();
       MemoriumAudio.click();
       updateModeHint();
       updateMenuBest();
@@ -579,6 +596,7 @@
       if (!btn) return;
       state.theme = btn.dataset.theme;
       setSeg("theme-group", "theme", state.theme);
+      document.documentElement.dataset.theme = state.theme;
       MemoriumAudio.click();
       updateMenuBest();
     });
@@ -592,9 +610,13 @@
     el.hint.addEventListener("click", useHint);
 
     const toggleMute = () => {
+      MemoriumAudio.unlock();
       MemoriumAudio.setMuted(!MemoriumAudio.isMuted());
       updateMuteUI();
-      if (!MemoriumAudio.isMuted()) MemoriumAudio.click();
+      if (!MemoriumAudio.isMuted()) {
+        ensureAmbient();
+        MemoriumAudio.click();
+      }
     };
     el.muteMenu.addEventListener("click", toggleMute);
     el.mute.addEventListener("click", toggleMute);
@@ -603,6 +625,7 @@
   }
 
   MemoriumAudio.loadMute();
+  document.documentElement.dataset.theme = state.theme;
   updateMuteUI();
   updateModeHint();
   bind();
