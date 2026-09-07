@@ -4,7 +4,7 @@ Jogo da memória premium no navegador. Original, em português do Brasil. Funcio
 
 ## Jogar
 
-**Live:** https://kt3746.github.io/memorium/?v=1
+**Live:** https://kt3746.github.io/memorium/?v=2
 
 1. Escolha a dificuldade (Fácil / Médio / Difícil) e o tema (Cosmos / Flora / Runas).
 2. Vire duas cartas. Pares ficam abertos; erros viram de volta.

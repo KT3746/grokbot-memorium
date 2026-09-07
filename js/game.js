@@ -27,7 +27,9 @@
     timerId: null,
     elapsed: 0,
     hintUsed: false,
-    focusIndex: 0
+    focusIndex: 0,
+    missTimer: null,
+    hintTimer: null
   };
 
   const el = {
@@ -133,6 +135,29 @@
     state.timerId = null;
   }
 
+  function clearPendingCardTimers() {
+    if (state.missTimer) {
+      clearTimeout(state.missTimer);
+      state.missTimer = null;
+    }
+    if (state.hintTimer) {
+      clearTimeout(state.hintTimer);
+      state.hintTimer = null;
+    }
+  }
+
+  function layoutForBoard(diff) {
+    const narrow = window.matchMedia("(max-width: 520px)").matches;
+    let cols = diff.cols;
+    let rows = diff.rows;
+    // No celular, difícil fica 4x6 em vez de 6x4 (cartas legíveis)
+    if (narrow && diff.id === "hard") {
+      cols = 4;
+      rows = 6;
+    }
+    return { cols, rows };
+  }
+
   function starCount(moves, pairs) {
     const perfect = pairs;
     if (moves <= perfect + 2) return 3;
@@ -141,7 +166,10 @@
   }
 
   function buildBoard() {
+    clearPendingCardTimers();
+    stopTimer();
     const diff = DIFFS[state.difficulty];
+    const layout = layoutForBoard(diff);
     const theme = window.MEMORIUM_THEMES[state.theme];
     const faces = theme.faces.slice(0, diff.pairs);
     const deck = shuffle(faces.flatMap((svg, id) => [
@@ -165,8 +193,11 @@
     el.streak.textContent = "0";
     el.hint.disabled = false;
     el.hint.style.opacity = "1";
+    el.hint.setAttribute("aria-label", "Dica: revela um par (+2 movimentos)");
+    el.hint.title = "Dica (+2 movimentos)";
 
-    el.board.style.gridTemplateColumns = `repeat(${diff.cols}, minmax(0, 1fr))`;
+    el.board.classList.toggle("is-hard", diff.id === "hard");
+    el.board.style.gridTemplateColumns = `repeat(${layout.cols}, minmax(0, 1fr))`;
     el.board.innerHTML = "";
 
     deck.forEach((card, index) => {
@@ -185,7 +216,7 @@
     });
 
     const first = el.board.querySelector(".card");
-    if (first) first.focus();
+    if (first) first.focus({ preventScroll: true });
   }
 
   function getCardEl(index) {
@@ -240,7 +271,9 @@
       el.streak.textContent = "0";
       na.classList.add("is-miss");
       nb.classList.add("is-miss");
-      setTimeout(() => {
+      state.missTimer = setTimeout(() => {
+        state.missTimer = null;
+        if (!na.isConnected || !nb.isConnected) return;
         na.classList.remove("is-flipped", "is-miss");
         nb.classList.remove("is-flipped", "is-miss");
         na.setAttribute("aria-label", `Carta ${a + 1}, virada para baixo`);
@@ -252,7 +285,7 @@
   }
 
   function useHint() {
-    if (state.hintUsed || state.lock) return;
+    if (state.hintUsed || state.lock || state.flipped.length > 0) return;
     const unmatched = state.cards
       .map((c, i) => ({ c, i }))
       .filter(({ i }) => {
@@ -261,9 +294,18 @@
       });
     if (unmatched.length < 2) return;
 
-    const target = unmatched[0].c.pairId;
-    const pair = unmatched.filter((x) => x.c.pairId === target).slice(0, 2);
-    if (pair.length < 2) return;
+    // Escolhe um par completo ainda fechado
+    const byPair = new Map();
+    for (const item of unmatched) {
+      const list = byPair.get(item.c.pairId) || [];
+      list.push(item);
+      byPair.set(item.c.pairId, list);
+    }
+    let pair = null;
+    for (const list of byPair.values()) {
+      if (list.length >= 2) { pair = list.slice(0, 2); break; }
+    }
+    if (!pair) return;
 
     state.hintUsed = true;
     state.moves += 2;
@@ -277,10 +319,13 @@
       n.classList.add("is-flipped");
     });
     state.lock = true;
-    setTimeout(() => {
+    state.hintTimer = setTimeout(() => {
+      state.hintTimer = null;
       pair.forEach(({ i }) => {
         const n = getCardEl(i);
-        if (!n.classList.contains("is-matched")) n.classList.remove("is-flipped");
+        if (n && n.isConnected && !n.classList.contains("is-matched")) {
+          n.classList.remove("is-flipped");
+        }
       });
       state.lock = false;
     }, 1100);
@@ -312,6 +357,7 @@
   }
 
   function showMenu() {
+    clearPendingCardTimers();
     stopTimer();
     el.overlay.hidden = true;
     el.game.hidden = true;
@@ -332,7 +378,7 @@
   function onBoardKey(e) {
     const cards = [...el.board.querySelectorAll(".card")];
     if (!cards.length) return;
-    const cols = DIFFS[state.difficulty].cols;
+    const cols = layoutForBoard(DIFFS[state.difficulty]).cols;
     let idx = cards.findIndex((c) => c === document.activeElement);
     if (idx < 0) idx = state.focusIndex;
 
