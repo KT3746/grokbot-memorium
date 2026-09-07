@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f1a" />
+  <meta name="description" content="MEMÓRIUM — jogo da memória premium no navegador" />
+  <title>MEMÓRIUM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=1" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f1a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%23f0b429' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23f0b429'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="orb orb-c"></div>
+  </div>
+
+  <div id="app" class="app">
+    <!-- MENU -->
+    <section id="screen-menu" class="screen screen-menu" aria-label="Menu principal">
+      <header class="hero">
+        <p class="eyebrow">jogo da memória</p>
+        <h1 class="logo">MEMÓRIUM</h1>
+        <p class="tagline">Encontre os pares. Domine a mente.</p>
+      </header>
+
+      <div class="panel">
+        <div class="field">
+          <span class="field-label" id="label-diff">Dificuldade</span>
+          <div class="seg" role="radiogroup" aria-labelledby="label-diff" id="diff-group">
+            <button type="button" class="seg-btn" role="radio" aria-checked="false" data-diff="easy">Fácil</button>
+            <button type="button" class="seg-btn is-active" role="radio" aria-checked="true" data-diff="medium">Médio</button>
+            <button type="button" class="seg-btn" role="radio" aria-checked="false" data-diff="hard">Difícil</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="label-theme">Tema</span>
+          <div class="theme-grid" role="radiogroup" aria-labelledby="label-theme" id="theme-group">
+            <button type="button" class="theme-card is-active" role="radio" aria-checked="true" data-theme="cosmos">
+              <span class="theme-preview" data-preview="cosmos" aria-hidden="true"></span>
+              <span class="theme-name">Cosmos</span>
+            </button>
+            <button type="button" class="theme-card" role="radio" aria-checked="false" data-theme="flora">
+              <span class="theme-preview" data-preview="flora" aria-hidden="true"></span>
+              <span class="theme-name">Flora</span>
+            </button>
+            <button type="button" class="theme-card" role="radio" aria-checked="false" data-theme="runas">
+              <span class="theme-preview" data-preview="runas" aria-hidden="true"></span>
+              <span class="theme-name">Runas</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-lg" id="btn-start">Jogar</button>
+        <p class="best-line" id="menu-best" hidden></p>
+      </div>
+
+      <footer class="menu-foot">
+        <button type="button" class="icon-btn" id="btn-mute-menu" aria-label="Silenciar sons" title="Som">
+          <span class="icon-sound" aria-hidden="true"></span>
+        </button>
+      </footer>
+    </section>
+
+    <!-- GAME -->
+    <section id="screen-game" class="screen screen-game" hidden aria-label="Partida">
+      <header class="hud">
+        <button type="button" class="icon-btn" id="btn-back" aria-label="Voltar ao menu">←</button>
+        <div class="hud-stats">
+          <div class="stat"><span class="stat-label">Movimentos</span><span class="stat-value" id="stat-moves">0</span></div>
+          <div class="stat"><span class="stat-label">Tempo</span><span class="stat-value" id="stat-time">0:00</span></div>
+          <div class="stat"><span class="stat-label">Combo</span><span class="stat-value" id="stat-streak">0</span></div>
+        </div>
+        <div class="hud-actions">
+          <button type="button" class="icon-btn" id="btn-hint" aria-label="Dica (+2 movimentos)">?</button>
+          <button type="button" class="icon-btn" id="btn-mute" aria-label="Silenciar sons">
+            <span class="icon-sound" aria-hidden="true"></span>
+          </button>
+        </div>
+      </header>
+      <div id="board" class="board" role="grid" aria-label="Tabuleiro de cartas"></div>
+    </section>
+
+    <!-- WIN -->
+    <div id="overlay-win" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="win-title">
+      <div class="overlay-card">
+        <p class="eyebrow">vitória</p>
+        <h2 id="win-title">Memória afiada</h2>
+        <div class="stars" id="win-stars" aria-label="Avaliação"></div>
+        <dl class="win-stats">
+          <div><dt>Movimentos</dt><dd id="win-moves">0</dd></div>
+          <div><dt>Tempo</dt><dd id="win-time">0:00</dd></div>
+          <div><dt>Melhor combo</dt><dd id="win-streak">0</dd></div>
+        </dl>
+        <p class="best-line" id="win-best"></p>
+        <div class="overlay-actions">
+          <button type="button" class="btn btn-primary" id="btn-replay">Jogar de novo</button>
+          <button type="button" class="btn btn-ghost" id="btn-menu">Menu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/themes.js?v=1" defer></script>
+  <script src="js/audio.js?v=1" defer></script>
+  <script src="js/game.js?v=1" defer></script>
+</body>
+</html>
