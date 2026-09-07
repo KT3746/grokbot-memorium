@@ -256,6 +256,7 @@
 
     el.moves.textContent = "0";
     el.streak.textContent = "0";
+    document.querySelector(".hud")?.classList.remove("is-hot");
     el.timeLabel.textContent = state.mode === "timed" ? "Restante" : "Tempo";
     paintTime();
     el.hint.disabled = false;
@@ -278,8 +279,17 @@
         <span class="face face-front" aria-hidden="true"><span class="glyph">${card.svg}</span></span>
       `;
       btn.addEventListener("click", () => onCardClick(index));
+      btn.style.animationDelay = `${Math.min(index * 28, 420)}ms`;
+      btn.classList.add("is-deal");
       el.board.appendChild(btn);
     });
+    // limpa classe de entrada
+    setTimeout(() => {
+      el.board.querySelectorAll(".card.is-deal").forEach((n) => n.classList.remove("is-deal"));
+    }, 900);
+    if (window.MemoriumAudio) {
+      try { MemoriumAudio.deal(); } catch (_) {}
+    }
 
     try {
       if (!localStorage.getItem("memorium-tip-seen")) {
@@ -329,12 +339,20 @@
 
     if (ca.pairId === cb.pairId) {
       MemoriumAudio.match();
+      try { navigator.vibrate?.(18); } catch (_) {}
       state.matches += 1;
       state.streak += 1;
       state.bestStreak = Math.max(state.bestStreak, state.streak);
       el.streak.textContent = String(state.streak);
+      document.querySelector(".hud")?.classList.toggle("is-hot", state.streak >= 2);
       na.classList.add("is-matched");
       nb.classList.add("is-matched");
+      [na, nb].forEach((node) => {
+        const flash = document.createElement("span");
+        flash.className = "match-flash";
+        node.appendChild(flash);
+        setTimeout(() => flash.remove(), 560);
+      });
       na.disabled = true;
       nb.disabled = true;
       na.setAttribute("aria-label", `Carta ${a + 1}, par encontrado`);
@@ -351,8 +369,10 @@
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
     } else {
       MemoriumAudio.miss();
+      try { navigator.vibrate?.([12, 40, 12]); } catch (_) {}
       state.streak = 0;
       el.streak.textContent = "0";
+      document.querySelector(".hud")?.classList.remove("is-hot");
       na.classList.add("is-miss");
       nb.classList.add("is-miss");
       state.missTimer = setTimeout(() => {
