@@ -293,7 +293,19 @@
         <span class="face face-back" aria-hidden="true"></span>
         <span class="face face-front" aria-hidden="true"><span class="glyph">${card.svg}</span></span>
       `;
-      btn.addEventListener("click", () => onCardClick(index));
+      let lastTap = 0;
+      const tap = (ev) => {
+        const now = Date.now();
+        if (now - lastTap < 250) return;
+        lastTap = now;
+        if (ev && ev.pointerType === "mouse" && ev.button != null && ev.button !== 0) return;
+        onCardClick(index);
+      };
+      btn.addEventListener("pointerup", tap);
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        tap(ev);
+      });
       btn.style.animationDelay = `${Math.min(index * 28, 420)}ms`;
       btn.classList.add("is-deal");
       el.board.appendChild(btn);
@@ -330,6 +342,7 @@
     if (state.lock || state.ended) return;
     const node = getCardEl(index);
     if (!node || node.classList.contains("is-flipped") || node.classList.contains("is-matched")) return;
+    node.classList.remove("is-deal");
 
     MemoriumAudio.unlock();
     MemoriumAudio.flip();
