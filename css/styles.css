@@ -375,13 +375,30 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   box-shadow: inset 0 0 0 6px rgba(240,180,41,0.12), 0 0 20px rgba(240,180,41,0.2);
 }
 .face-front {
-  background: linear-gradient(160deg, #1c243c, #101628);
-  border: 1px solid rgba(255,255,255,0.12);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255,255,255,0.14), transparent 45%),
+    linear-gradient(165deg, #2a3558 0%, #151c34 55%, #0c1020 100%);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 -10px 24px rgba(0,0,0,0.28);
+}
+.face-front::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--card-ring, #f0b429) 35%, transparent);
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--card-ring, #f0b429) 18%, transparent), transparent 62%),
+    linear-gradient(180deg, rgba(255,255,255,0.06), transparent 40%);
+  pointer-events: none;
 }
 .face-front .glyph {
-  width: 78%; height: 78%;
+  position: relative;
+  z-index: 1;
+  width: 72%; height: 72%;
   display: grid; place-items: center;
-  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));
 }
 .face-front .glyph svg { width: 100%; height: 100%; display: block; }
 
@@ -664,12 +681,7 @@ body {
 }
 
 .face-front {
-  background:
-    linear-gradient(160deg, #2a3352, #141b30 55%, #0d1222);
-  border: 1px solid rgba(255,255,255,0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.1),
-    0 14px 28px rgba(0,0,0,0.4);
+  /* plate handled above */
 }
 
 .card:not(:disabled):not(.is-flipped):not(.is-matched):active .face-back {
@@ -1043,4 +1055,84 @@ html[data-theme="comida"] .face-back {
   .theme-grid-5 { grid-template-columns: repeat(5, 1fr); }
   .screen-menu .theme-preview { width: 32px; height: 32px; }
   .screen-menu .theme-name { font-size: 0.65rem; }
+}
+
+
+html[data-theme="cosmos"] .face-front {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(180,160,255,0.22), transparent 48%),
+    linear-gradient(165deg, #3a2f78, #1a1440 55%, #0c0820 100%);
+}
+html[data-theme="flora"] .face-front {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(125,255,179,0.2), transparent 48%),
+    linear-gradient(165deg, #1f5a3a, #0f2a1c 55%, #08140e 100%);
+}
+html[data-theme="runas"] .face-front {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,160,100,0.22), transparent 48%),
+    linear-gradient(165deg, #7a3a22, #3a1810 55%, #180c08 100%);
+}
+html[data-theme="neon"] .face-front {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,0,229,0.25), transparent 48%),
+    linear-gradient(165deg, #4a1068, #220838 55%, #0c0414 100%);
+}
+html[data-theme="comida"] .face-front {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,209,102,0.22), transparent 48%),
+    linear-gradient(165deg, #8a2a22, #4a1410 55%, #1c0808 100%);
+}
+
+.match-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 0 2px;
+}
+.pairs-line, .score-line {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.score-line strong {
+  color: var(--accent);
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0;
+  margin-left: 4px;
+}
+.combo-bar {
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.combo-bar span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width 0.25s ease;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.win-stats-4 {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+@media (min-width: 420px) {
+  .win-stats-4 { grid-template-columns: repeat(4, 1fr) !important; }
+}
+.card.is-matched .face-front::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px rgba(61,214,140,0.75);
+  pointer-events: none;
 }

@@ -24,6 +24,7 @@
     matches: 0,
     streak: 0,
     bestStreak: 0,
+    score: 0,
     startedAt: 0,
     timerId: null,
     elapsed: 0,
@@ -60,7 +61,10 @@
     mute: document.getElementById("btn-mute"),
     hint: document.getElementById("btn-hint"),
     pairsLine: document.getElementById("pairs-line"),
-    progressFg: document.getElementById("progress-fg")
+    progressFg: document.getElementById("progress-fg"),
+    score: document.getElementById("stat-score"),
+    comboFill: document.getElementById("combo-fill"),
+    winScore: document.getElementById("win-score")
   };
 
   function bestKey() {
@@ -88,7 +92,8 @@
       } else {
         better =
           record.moves < prev.moves ||
-          (record.moves === prev.moves && record.time < prev.time);
+          (record.moves === prev.moves && record.time < prev.time) ||
+          (record.moves === prev.moves && record.time === prev.time && (record.score || 0) > (prev.score || 0));
       }
     }
     if (better) {
@@ -144,7 +149,8 @@
         ? `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): sobrou ${formatTime(best.timeLeft)}`
         : `Melhor tentativa ainda sem vitória neste modo.`;
     } else {
-      el.menuBest.textContent = `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): ${best.moves} mov. em ${formatTime(best.time)}`;
+      const scoreBit = best.score != null ? ` · ${best.score} pts` : "";
+      el.menuBest.textContent = `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): ${best.moves} mov. em ${formatTime(best.time)}${scoreBit}`;
     }
   }
 
@@ -184,7 +190,26 @@
     return { cols, rows };
   }
 
-  function updateProgress() {
+  
+  function updateScoreUI() {
+    if (el.score) el.score.textContent = String(state.score);
+    if (el.comboFill) {
+      const pct = Math.min(100, state.streak * 25);
+      el.comboFill.style.width = pct + "%";
+    }
+  }
+
+  function awardMatchPoints() {
+    const base = 100;
+    const comboBonus = Math.max(0, (state.streak - 1) * 50);
+    const speedBonus = state.mode === "timed" ? 25 : 0;
+    const gain = base + comboBonus + speedBonus;
+    state.score += gain;
+    updateScoreUI();
+    return gain;
+  }
+
+function updateProgress() {
     const pairs = DIFFS[state.difficulty].pairs;
     if (el.pairsLine) el.pairsLine.textContent = `${state.matches} / ${pairs} pares`;
     if (el.progressFg) {
@@ -262,6 +287,7 @@
     state.matches = 0;
     state.streak = 0;
     state.bestStreak = 0;
+    state.score = 0;
     state.elapsed = 0;
     state.timeLeft = diff.timedStart;
     state.hintUsed = false;
@@ -275,6 +301,7 @@
     el.hint.disabled = false;
     el.hint.style.opacity = "1";
     updateProgress();
+    updateScoreUI();
 
     el.board.classList.remove("is-dim");
     el.board.classList.toggle("is-hard", diff.id === "hard");
@@ -392,14 +419,15 @@
       state.flipped = [];
       state.lock = false;
 
+      const gained = awardMatchPoints();
       if (state.mode === "timed") {
         state.timeLeft += DIFFS[state.difficulty].timedBonus;
         paintTime();
-        spawnBonusPop(`+${DIFFS[state.difficulty].timedBonus}s`);
+        spawnBonusPop(`+${DIFFS[state.difficulty].timedBonus}s · +${gained}`);
       } else if (state.streak >= 2) {
-        spawnBonusPop(`Combo ×${state.streak}`);
+        spawnBonusPop(`Combo ×${state.streak} · +${gained}`);
       } else {
-        spawnBonusPop("Par!");
+        spawnBonusPop(`+${gained}`);
       }
 
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
@@ -414,6 +442,7 @@
       state.streak = 0;
       el.streak.textContent = "0";
       document.querySelector(".hud")?.classList.remove("is-hot");
+      updateScoreUI();
       na.classList.add("is-miss");
       nb.classList.add("is-miss");
       state.missTimer = setTimeout(() => {
@@ -496,10 +525,16 @@
 
     const pairs = DIFFS[state.difficulty].pairs;
     const stars = starCount(state.moves, pairs);
+    if (state.moves <= pairs) {
+      state.score += 250;
+      spawnBonusPop("Perfeito +250");
+    }
+    state.score += stars * 50;
+    updateScoreUI();
     const record =
       state.mode === "timed"
-        ? { cleared: true, timeLeft: state.timeLeft, moves: state.moves, streak: state.bestStreak }
-        : { moves: state.moves, time: state.elapsed, streak: state.bestStreak };
+        ? { cleared: true, timeLeft: state.timeLeft, moves: state.moves, streak: state.bestStreak, score: state.score }
+        : { moves: state.moves, time: state.elapsed, streak: state.bestStreak, score: state.score };
     const isNew = saveBest(record);
     const best = loadBest();
 
@@ -507,6 +542,7 @@
     el.winTitle.textContent = WIN_TITLES[Math.floor(Math.random() * WIN_TITLES.length)];
     el.winStars.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
     el.winStars.setAttribute("aria-label", `${stars} de 3 estrelas`);
+    if (el.winScore) el.winScore.textContent = String(state.score);
     el.winMoves.textContent = String(state.moves);
     el.winTimeLabel.textContent = state.mode === "timed" ? "Sobra" : "Tempo";
     el.winTime.textContent = state.mode === "timed" ? formatTime(state.timeLeft) : formatTime(state.elapsed);
