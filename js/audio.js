@@ -185,8 +185,9 @@ window.MemoriumAudio = (function () {
       }
     },
     flip() {
-      tone(520, 0.06, "triangle", 0.06);
-      noiseBurst(0.04, 0.03);
+      tone(480, 0.045, "triangle", 0.05);
+      tone(620, 0.05, "sine", 0.035, undefined);
+      noiseBurst(0.035, 0.022);
     },
     match() {
       const c = ensure();
@@ -208,6 +209,15 @@ window.MemoriumAudio = (function () {
       notes.forEach((f, i) => tone(f, 0.26, i % 2 ? "triangle" : "sine", 0.1, c.currentTime + i * 0.1));
     },
     click() { tone(740, 0.035, "square", 0.025); },
-    deal() { tone(380 + Math.random() * 40, 0.04, "triangle", 0.03); }
+    deal() { tone(380 + Math.random() * 40, 0.04, "triangle", 0.03); },
+    combo(level) {
+      const c = ensure();
+      if (!c || muted) return;
+      const n = Math.min(5, Math.max(1, level | 0));
+      const base = 660 + n * 40;
+      tone(base, 0.08, "triangle", 0.07);
+      tone(base * 1.5, 0.14, "sine", 0.06, c.currentTime + 0.05);
+      if (n >= 3) tone(base * 2, 0.2, "sine", 0.05, c.currentTime + 0.1);
+    }
   };
 })();

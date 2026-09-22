@@ -332,7 +332,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   border-radius: 14px;
   display: grid; place-items: center;
   box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease;
+  transition: transform 0.42s cubic-bezier(0.18, 0.9, 0.22, 1.15), opacity 0.28s ease;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transform-style: preserve-3d;
@@ -1178,4 +1178,69 @@ html[data-theme="comida"] .face-front {
   font-weight: 700;
   color: var(--text);
   opacity: 0.9;
+}
+
+
+/* —— AAA polish v18 —— */
+.card {
+  contain: layout style;
+}
+.card.is-just-flipped .face {
+  transition-timing-function: cubic-bezier(0.15, 0.85, 0.25, 1.2);
+}
+.card.is-match-pop .face-front {
+  animation: matchPulse 0.42s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.board.is-hitstop {
+  transform: scale(0.992);
+  filter: brightness(1.08);
+  transition: transform 0.06s ease, filter 0.06s ease;
+}
+.app.is-combo .combo-bar span {
+  box-shadow: 0 0 16px rgba(240,180,41,0.65);
+}
+.app.is-combo .hud.is-hot {
+  box-shadow: 0 0 0 1px rgba(240,180,41,0.25), 0 12px 40px rgba(240,180,41,0.12);
+}
+.tip {
+  background: linear-gradient(90deg, rgba(240,180,41,0.16), rgba(240,180,41,0.06));
+  border: 1px solid rgba(240,180,41,0.28);
+  border-radius: 12px;
+  padding: 0.55rem 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  animation: tipIn 0.45s ease both;
+}
+@keyframes tipIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.bonus-pop {
+  animation: bonusPop 0.85s cubic-bezier(0.2, 0.85, 0.2, 1) forwards;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.45), 0 0 18px rgba(240,180,41,0.35);
+}
+@keyframes bonusPop {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+  18% { opacity: 1; transform: translate(-50%, -70%) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(1); }
+}
+.overlay.is-cinematic .overlay-card {
+  animation: winCardIn 0.55s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+@keyframes winCardIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board.is-hitstop { transform: none; filter: none; }
+  .card.is-match-pop .face-front,
+  .tip,
+  .bonus-pop,
+  .overlay.is-cinematic .overlay-card { animation: none !important; }
+  .face {
+    transition: transform 0.2s ease, opacity 0.15s ease !important;
+  }
 }
