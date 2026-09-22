@@ -192,6 +192,20 @@
       state.dealTimer = null;
     }
     state.dealLock = false;
+    if (el.board) {
+      el.board.querySelectorAll(".card.is-miss, .card.is-hint").forEach((n) => {
+        n.classList.remove("is-miss", "is-hint");
+        if (!n.classList.contains("is-matched")) {
+          n.classList.remove("is-flipped");
+          const front = n.querySelector(".face-front");
+          const back = n.querySelector(".face-back");
+          if (front) front.setAttribute("aria-hidden", "true");
+          if (back) back.setAttribute("aria-hidden", "false");
+        }
+      });
+    }
+    state.flipped = [];
+    state.lock = false;
   }
 
   function layoutForBoard(diff) {

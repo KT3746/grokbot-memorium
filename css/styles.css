@@ -977,8 +977,8 @@ html[data-theme="comida"] .face-back {
 .overlay.is-cinematic .overlay-card { position: relative; z-index: 2; }
 
 .board.is-dim .card:not(.is-matched):not(.is-flipped) .face-back {
-  filter: brightness(0.72);
-  transition: filter 0.35s ease;
+  opacity: 0.72;
+  transition: opacity 0.35s ease;
 }
 
 @media (max-width: 520px) {
