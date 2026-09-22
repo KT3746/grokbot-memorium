@@ -225,9 +225,15 @@
     const narrow = window.matchMedia("(max-width: 520px)").matches;
     let cols = diff.cols;
     let rows = diff.rows;
-    if (narrow && diff.id === "hard") {
-      cols = 4;
-      rows = 6;
+    if (narrow) {
+      // cartas maiores no celular: menos colunas
+      if (diff.id === "easy") {
+        cols = 3;
+        rows = 4;
+      } else if (diff.id === "hard") {
+        cols = 4;
+        rows = 6;
+      }
     }
     return { cols, rows };
   }

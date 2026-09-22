@@ -483,11 +483,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .hud-actions { grid-column: 2; justify-self: end; }
   .stat-value { font-size: 0.95rem; }
   .icon-btn { width: 40px; height: 40px; }
-  .board { gap: 5px; }
+  .board { gap: 6px; }
   /* No celular as cartas preenchem a grade (não estouram a barra do Chrome) */
   .card {
     aspect-ratio: auto;
-    border-radius: 10px;
+    border-radius: 12px;
+    min-height: 0;
   }
   .face { border-radius: 10px; }
   .screen-game {
