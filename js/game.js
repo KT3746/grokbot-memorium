@@ -33,6 +33,8 @@
     focusIndex: 0,
     missTimer: null,
     hintTimer: null,
+    dealTimer: null,
+    dealLock: false,
     ended: false
   };
 
@@ -42,6 +44,7 @@
     board: document.getElementById("board"),
     overlay: document.getElementById("overlay-win"),
     overlayLose: document.getElementById("overlay-lose"),
+    loseScore: document.getElementById("lose-score"),
     moves: document.getElementById("stat-moves"),
     time: document.getElementById("stat-time"),
     timeLabel: document.getElementById("stat-time-label"),
@@ -87,8 +90,11 @@
       if (state.mode === "timed") {
         better =
           (record.cleared && !prev.cleared) ||
-          (record.cleared && prev.cleared && (record.timeLeft > prev.timeLeft ||
-            (record.timeLeft === prev.timeLeft && record.moves < prev.moves)));
+          (record.cleared && prev.cleared && (
+            record.timeLeft > prev.timeLeft ||
+            (record.timeLeft === prev.timeLeft && record.moves < prev.moves) ||
+            (record.timeLeft === prev.timeLeft && record.moves === prev.moves && (record.score || 0) > (prev.score || 0))
+          ));
       } else {
         better =
           record.moves < prev.moves ||
@@ -145,9 +151,13 @@
     el.menuBest.hidden = false;
     const modeLabel = state.mode === "timed" ? "Relógio" : "Clássico";
     if (state.mode === "timed") {
-      el.menuBest.textContent = best.cleared
-        ? `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): sobrou ${formatTime(best.timeLeft)}`
-        : `Melhor tentativa ainda sem vitória neste modo.`;
+      if (best.cleared) {
+        const scoreBit = best.score != null ? ` · ${best.score} pts` : "";
+        el.menuBest.textContent = `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): sobrou ${formatTime(best.timeLeft)}${scoreBit}`;
+      } else {
+        el.menuBest.hidden = true;
+        return;
+      }
     } else {
       const scoreBit = best.score != null ? ` · ${best.score} pts` : "";
       el.menuBest.textContent = `Melhor (${modeLabel} · ${DIFFS[state.difficulty].label} · ${window.MEMORIUM_THEMES[state.theme].name}): ${best.moves} mov. em ${formatTime(best.time)}${scoreBit}`;
@@ -177,6 +187,11 @@
       clearTimeout(state.hintTimer);
       state.hintTimer = null;
     }
+    if (state.dealTimer) {
+      clearTimeout(state.dealTimer);
+      state.dealTimer = null;
+    }
+    state.dealLock = false;
   }
 
   function layoutForBoard(diff) {
@@ -292,6 +307,7 @@ function updateProgress() {
     state.timeLeft = diff.timedStart;
     state.hintUsed = false;
     state.focusIndex = 0;
+    state.dealLock = true;
 
     el.moves.textContent = "0";
     el.streak.textContent = "0";
@@ -320,23 +336,28 @@ function updateProgress() {
         <span class="face face-back" aria-hidden="true"></span>
         <span class="face face-front" aria-hidden="true"><span class="glyph">${card.svg}</span></span>
       `;
-      let lastTap = 0;
-      const tap = (ev) => {
-        const now = Date.now();
-        if (now - lastTap < 250) return;
-        lastTap = now;
-        if (ev && ev.pointerType === "mouse" && ev.button != null && ev.button !== 0) return;
-        onCardClick(index);
-      };
-      btn.addEventListener("pointerup", tap);
-      btn.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        tap(ev);
+      let pt = null;
+      btn.addEventListener("pointerdown", (ev) => {
+        if (ev.button != null && ev.button !== 0) return;
+        pt = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
+        try { btn.setPointerCapture(ev.pointerId); } catch (_) {}
       });
+      btn.addEventListener("pointerup", (ev) => {
+        if (!pt || pt.id !== ev.pointerId) return;
+        const dx = ev.clientX - pt.x;
+        const dy = ev.clientY - pt.y;
+        pt = null;
+        if (dx * dx + dy * dy > 100) return; // arrasto = não clica
+        onCardClick(index);
+      });
+      btn.addEventListener("pointercancel", () => { pt = null; });
+      btn.addEventListener("click", (ev) => ev.preventDefault());
       btn.style.animationDelay = `${Math.min(index * 28, 420)}ms`;
       btn.classList.add("is-deal");
       el.board.appendChild(btn);
     });
+    clearTimeout(state.dealTimer);
+    state.dealTimer = setTimeout(() => { state.dealLock = false; }, 480);
     // limpa classe de entrada
     setTimeout(() => {
       el.board.querySelectorAll(".card.is-deal").forEach((n) => n.classList.remove("is-deal"));
@@ -366,7 +387,7 @@ function updateProgress() {
   }
 
   function onCardClick(index) {
-    if (state.lock || state.ended) return;
+    if (state.lock || state.ended || state.dealLock) return;
     const node = getCardEl(index);
     if (!node || node.classList.contains("is-flipped") || node.classList.contains("is-matched")) return;
     node.classList.remove("is-deal");
@@ -378,6 +399,10 @@ function updateProgress() {
 
     node.classList.add("is-flipped");
     node.setAttribute("aria-label", `Carta ${index + 1}, virada para cima`);
+    const front = node.querySelector(".face-front");
+    const back = node.querySelector(".face-back");
+    if (front) front.setAttribute("aria-hidden", "false");
+    if (back) back.setAttribute("aria-hidden", "true");
     state.flipped.push(index);
 
     if (state.flipped.length < 2) return;
@@ -452,6 +477,12 @@ function updateProgress() {
         nb.classList.remove("is-flipped", "is-miss");
         na.setAttribute("aria-label", `Carta ${a + 1}, virada para baixo`);
         nb.setAttribute("aria-label", `Carta ${b + 1}, virada para baixo`);
+        [na, nb].forEach((node) => {
+          const front = node.querySelector(".face-front");
+          const back = node.querySelector(".face-back");
+          if (front) front.setAttribute("aria-hidden", "true");
+          if (back) back.setAttribute("aria-hidden", "false");
+        });
         state.flipped = [];
         state.lock = false;
       }, 900);
@@ -501,16 +532,26 @@ function updateProgress() {
     el.hint.style.opacity = "0.4";
     MemoriumAudio.click();
 
-    pair.forEach(({ i }) => getCardEl(i).classList.add("is-flipped"));
+    pair.forEach(({ i }) => {
+      const n = getCardEl(i);
+      n.classList.add("is-flipped", "is-hint");
+    });
     state.lock = true;
     state.hintTimer = setTimeout(() => {
       state.hintTimer = null;
       pair.forEach(({ i }) => {
         const n = getCardEl(i);
-        if (n && n.isConnected && !n.classList.contains("is-matched")) n.classList.remove("is-flipped");
+        if (n && n.isConnected && !n.classList.contains("is-matched")) {
+          n.classList.remove("is-flipped", "is-hint");
+          n.setAttribute("aria-label", `Carta ${i + 1}, virada para baixo`);
+          const front = n.querySelector(".face-front");
+          const back = n.querySelector(".face-back");
+          if (front) front.setAttribute("aria-hidden", "true");
+          if (back) back.setAttribute("aria-hidden", "false");
+        }
       });
       state.lock = false;
-    }, 1100);
+    }, 1200);
   }
 
   function endGame() {
@@ -525,9 +566,10 @@ function updateProgress() {
 
     const pairs = DIFFS[state.difficulty].pairs;
     const stars = starCount(state.moves, pairs);
+    let perfect = false;
     if (state.moves <= pairs) {
       state.score += 250;
-      spawnBonusPop("Perfeito +250");
+      perfect = true;
     }
     state.score += stars * 50;
     updateScoreUI();
@@ -547,18 +589,19 @@ function updateProgress() {
     el.winTimeLabel.textContent = state.mode === "timed" ? "Sobra" : "Tempo";
     el.winTime.textContent = state.mode === "timed" ? formatTime(state.timeLeft) : formatTime(state.elapsed);
     el.winStreak.textContent = String(state.bestStreak);
+    const perfectLine = perfect ? "Partida perfeita! +250 pts. " : "";
     if (state.mode === "timed") {
-      el.winBest.textContent = isNew
+      el.winBest.textContent = perfectLine + (isNew
         ? "Novo recorde neste modo!"
         : best && best.cleared
           ? `Melhor sobra: ${formatTime(best.timeLeft)}`
-          : "";
+          : "");
     } else {
-      el.winBest.textContent = isNew
+      el.winBest.textContent = perfectLine + (isNew
         ? "Novo recorde neste modo!"
         : best
           ? `Melhor: ${best.moves} mov. em ${formatTime(best.time)}`
-          : "";
+          : "");
     }
 
     el.overlayLose.hidden = true;
@@ -574,7 +617,11 @@ function updateProgress() {
     clearPendingCardTimers();
     state.lock = true;
     MemoriumAudio.miss();
-    saveBest({ cleared: false, timeLeft: 0, moves: state.moves, streak: state.bestStreak });
+    // não grava derrota como "melhor" — só vitórias atualizam recorde
+    if (el.loseScore) {
+      el.loseScore.hidden = false;
+      el.loseScore.textContent = `Pontuação: ${state.score}`;
+    }
     el.overlay.hidden = true;
     el.overlayLose.hidden = false;
     document.getElementById("btn-replay-lose").focus();

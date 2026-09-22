@@ -680,13 +680,8 @@ body {
   background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.28), transparent 55%);
 }
 
-.face-front {
-  /* plate handled above */
-}
 
-.card:not(:disabled):not(.is-flipped):not(.is-matched):active .face-back {
-  filter: brightness(1.12);
-}
+
 .card.is-flipped,
 .card.is-matched {
   animation: none;
@@ -1135,4 +1130,48 @@ html[data-theme="comida"] .face-front {
   border-radius: inherit;
   box-shadow: inset 0 0 0 2px rgba(61,214,140,0.75);
   pointer-events: none;
+}
+
+.card.is-hint .face-front {
+  box-shadow: 0 0 0 2px rgba(240,180,41,0.85), 0 0 24px rgba(240,180,41,0.35);
+}
+.card.is-hint .face-front::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px rgba(240,180,41,0.55);
+  pointer-events: none;
+}
+
+/* HUD: anel não tapa o tempo */
+.stat-progress .progress-ring {
+  opacity: 0.55;
+  width: 52px;
+  height: 52px;
+}
+.stat-progress .stat-label,
+.stat-progress .stat-value {
+  position: relative;
+  z-index: 1;
+}
+
+/* Feedback de toque sem filter no wrapper (mantém flip) */
+.card:not(:disabled):not(.is-flipped):not(.is-matched):active .face-back {
+  transform: rotateY(0deg) scale(0.97);
+  -webkit-transform: rotateY(0deg) scale(0.97);
+}
+
+/* Combo bar um pouco mais visível */
+.combo-bar { height: 5px; margin-top: 2px; }
+
+#win-best:not(:empty) {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.lose-score {
+  margin: 0.35rem 0 0;
+  font-weight: 700;
+  color: var(--text);
+  opacity: 0.9;
 }
