@@ -29,6 +29,7 @@
     timerId: null,
     elapsed: 0,
     timeLeft: 0,
+    endsAt: 0,
     hintUsed: false,
     focusIndex: 0,
     missTimer: null,
@@ -173,6 +174,18 @@
     });
   }
 
+
+  function setOverlayOpen(open) {
+    if (el.game) {
+      if (open) el.game.setAttribute("aria-hidden", "true");
+      else el.game.removeAttribute("aria-hidden");
+      try {
+        if (open) el.game.inert = true;
+        else el.game.inert = false;
+      } catch (_) {}
+    }
+  }
+
   function stopTimer() {
     if (state.timerId) clearInterval(state.timerId);
     state.timerId = null;
@@ -261,17 +274,17 @@ function updateProgress() {
   function startTimer() {
     stopTimer();
     if (state.mode === "timed") {
-      state.startedAt = Date.now();
+      state.endsAt = Date.now() + Math.max(0, state.timeLeft) * 1000;
       state.timerId = setInterval(() => {
         if (state.ended) return;
-        state.timeLeft -= 1;
+        state.timeLeft = Math.max(0, Math.ceil((state.endsAt - Date.now()) / 1000));
         paintTime();
         if (state.timeLeft <= 0) {
           state.timeLeft = 0;
           paintTime();
           loseGame();
         }
-      }, 1000);
+      }, 250);
     } else {
       state.startedAt = Date.now() - state.elapsed * 1000;
       state.timerId = setInterval(() => {
@@ -362,10 +375,20 @@ function updateProgress() {
         const dy = ev.clientY - pt.y;
         pt = null;
         if (dx * dx + dy * dy > 100) return; // arrasto = não clica
+        btn.dataset.ptrTap = "1";
         onCardClick(index);
       });
       btn.addEventListener("pointercancel", () => { pt = null; });
-      btn.addEventListener("click", (ev) => ev.preventDefault());
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        // fallback: leitores/automação que só disparam click
+        if (pt) return;
+        if (btn.dataset.ptrTap === "1") {
+          delete btn.dataset.ptrTap;
+          return;
+        }
+        onCardClick(index);
+      });
       btn.style.animationDelay = `${Math.min(index * 28, 420)}ms`;
       btn.classList.add("is-deal");
       el.board.appendChild(btn);
@@ -460,9 +483,12 @@ function updateProgress() {
 
       const gained = awardMatchPoints();
       if (state.mode === "timed") {
-        state.timeLeft += DIFFS[state.difficulty].timedBonus;
+        const bonus = DIFFS[state.difficulty].timedBonus;
+        state.timeLeft += bonus;
+        if (state.endsAt) state.endsAt += bonus * 1000;
+        else state.endsAt = Date.now() + state.timeLeft * 1000;
         paintTime();
-        spawnBonusPop(`+${DIFFS[state.difficulty].timedBonus}s · +${gained}`);
+        spawnBonusPop(`+${bonus}s · +${gained}`);
       } else if (state.streak >= 2) {
         spawnBonusPop(`Combo ×${state.streak} · +${gained}`);
       } else {
@@ -518,7 +544,7 @@ function updateProgress() {
   }
 
   function useHint() {
-    if (state.hintUsed || state.lock || state.ended || state.flipped.length > 0) return;
+    if (state.hintUsed || state.lock || state.ended || state.dealLock || state.flipped.length > 0) return;
     const unmatched = state.cards
       .map((c, i) => ({ c, i }))
       .filter(({ i }) => {
@@ -546,9 +572,15 @@ function updateProgress() {
     el.hint.style.opacity = "0.4";
     MemoriumAudio.click();
 
+    if (!state.timerId) startTimer();
     pair.forEach(({ i }) => {
       const n = getCardEl(i);
       n.classList.add("is-flipped", "is-hint");
+      n.setAttribute("aria-label", `Carta ${i + 1}, virada para cima (dica)`);
+      const front = n.querySelector(".face-front");
+      const back = n.querySelector(".face-back");
+      if (front) front.setAttribute("aria-hidden", "false");
+      if (back) back.setAttribute("aria-hidden", "true");
     });
     state.lock = true;
     state.hintTimer = setTimeout(() => {
@@ -621,6 +653,7 @@ function updateProgress() {
     el.overlayLose.hidden = true;
     el.overlay.classList.add("is-cinematic");
     el.overlay.hidden = false;
+    setOverlayOpen(true);
     document.getElementById("btn-replay").focus();
   }
 
@@ -638,6 +671,7 @@ function updateProgress() {
     }
     el.overlay.hidden = true;
     el.overlayLose.hidden = false;
+    setOverlayOpen(true);
     document.getElementById("btn-replay-lose").focus();
   }
 
@@ -650,6 +684,7 @@ function updateProgress() {
     el.overlay.hidden = true;
     el.overlay.classList.remove("is-cinematic");
     el.overlayLose.hidden = true;
+    setOverlayOpen(false);
     el.game.hidden = true;
     el.menu.hidden = false;
     document.getElementById("app").classList.remove("is-playing");
@@ -666,6 +701,7 @@ function updateProgress() {
     el.menu.hidden = true;
     el.overlay.hidden = true;
     el.overlayLose.hidden = true;
+    setOverlayOpen(false);
     el.game.hidden = false;
     document.getElementById("app").classList.add("is-playing");
     document.documentElement.dataset.theme = state.theme;
@@ -768,6 +804,14 @@ function updateProgress() {
   bind();
   updateMenuBest();
   fitViewport();
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const winOpen = el.overlay && !el.overlay.hidden;
+    const loseOpen = el.overlayLose && !el.overlayLose.hidden;
+    if (!winOpen && !loseOpen) return;
+    e.preventDefault();
+    showMenu();
+  });
   window.addEventListener("resize", fitViewport);
   const boot = document.getElementById("boot");
   if (boot) {
