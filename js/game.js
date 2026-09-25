@@ -722,6 +722,7 @@ function updateProgress() {
     el.game.hidden = true;
     el.menu.hidden = false;
     document.getElementById("app").classList.remove("is-playing", "is-combo");
+    window.MemoriumBG3D?.setPlaying?.(false);
     MemoriumAudio.setAmbientLevel(0.045);
     MemoriumAudio.setAmbient(true);
     updateMenuBest();
@@ -739,6 +740,8 @@ function updateProgress() {
     el.game.hidden = false;
     document.getElementById("app").classList.add("is-playing");
     document.documentElement.dataset.theme = state.theme;
+    window.MemoriumBG3D?.setTheme?.(state.theme);
+    window.MemoriumBG3D?.setPlaying?.(true);
     MemoriumAudio.setAmbientLevel(0.018);
     MemoriumAudio.setAmbient(true);
     fitViewport();
@@ -804,6 +807,7 @@ function updateProgress() {
       state.theme = btn.dataset.theme;
       setSeg("theme-group", "theme", state.theme);
       document.documentElement.dataset.theme = state.theme;
+      window.MemoriumBG3D?.setTheme?.(state.theme);
       MemoriumAudio.click();
       updateMenuBest();
     });

@@ -35,9 +35,41 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .bg { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+#view3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 0;
+}
+body.renderer-canvas #view3d { display: none !important; }
+body.has-webgl-bg .orb { display: none !important; }
+body.has-webgl-bg .bg::before { opacity: 0.16; }
+.webgl-fail {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + var(--chrome-bottom, var(--safe-b)));
+  z-index: 8;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(8, 10, 18, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.webgl-fail[hidden] { display: none !important; }
 .orb {
   position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.45;
   animation: drift 18s ease-in-out infinite alternate;
+  z-index: 1;
 }
 .orb-a { width: 42vw; height: 42vw; left: -10%; top: -8%; background: #3a2a8a; }
 .orb-b { width: 36vw; height: 36vw; right: -12%; top: 30%; background: #1d4e7a; animation-delay: -6s; }
@@ -593,6 +625,7 @@ body {
 .bg::before {
   content: "";
   position: absolute; inset: 0;
+  z-index: 1;
   background-image:
     linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
@@ -827,9 +860,11 @@ html[data-theme="comida"] .face-back {
   position: absolute; inset: 0;
   background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%);
   pointer-events: none;
+  z-index: 2;
 }
 .grain-live {
   position: absolute; inset: -20%;
+  z-index: 2;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
   opacity: 0.07;
   animation: grainShift 0.8s steps(3) infinite;
