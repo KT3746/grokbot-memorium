@@ -42,6 +42,7 @@
     elapsed: 0,
     timeLeft: 0,
     endsAt: 0,
+    clockPaused: false,
     hintUsed: false,
     focusIndex: 0,
     missTimer: null,
@@ -851,6 +852,52 @@ function updateProgress() {
     showMenu();
   });
   window.addEventListener("resize", fitViewport);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (state.mode === "timed" && state.timerId && !state.ended) {
+        state.timeLeft = Math.max(0, Math.ceil((state.endsAt - Date.now()) / 1000));
+        paintTime();
+        stopTimer();
+        state.clockPaused = true;
+      }
+      // Cancela timers de flip pendentes (miss/hint) enquanto oculto
+      if (state.missTimer || state.hintTimer) {
+        if (state.missTimer) {
+          clearTimeout(state.missTimer);
+          state.missTimer = null;
+        }
+        if (state.hintTimer) {
+          clearTimeout(state.hintTimer);
+          state.hintTimer = null;
+        }
+        if (el.board) {
+          el.board.querySelectorAll(".card.is-miss, .card.is-hint").forEach((n) => {
+            n.classList.remove("is-miss", "is-hint");
+            if (!n.classList.contains("is-matched")) {
+              n.classList.remove("is-flipped");
+              const front = n.querySelector(".face-front");
+              const back = n.querySelector(".face-back");
+              if (front) front.setAttribute("aria-hidden", "true");
+              if (back) back.setAttribute("aria-hidden", "false");
+            }
+          });
+        }
+        state.flipped = [];
+        state.lock = false;
+      }
+    } else if (state.clockPaused && !state.ended && state.mode === "timed") {
+      state.clockPaused = false;
+      if (state.timeLeft <= 0) {
+        state.timeLeft = 0;
+        paintTime();
+        loseGame();
+      } else if (el.game && !el.game.hidden) {
+        startTimer();
+      }
+    }
+  });
+
   const boot = document.getElementById("boot");
   if (boot) {
     const finishBoot = () => boot.classList.add("is-done");
