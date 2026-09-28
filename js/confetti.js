@@ -5,6 +5,28 @@ window.MemoriumConfetti = (function () {
   let raf = 0;
   let running = false;
 
+  function detectLowEnd() {
+    try {
+      if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) return true;
+      if (navigator.deviceMemory && navigator.deviceMemory <= 4) return true;
+      if (window.matchMedia("(pointer: coarse)").matches && window.innerWidth < 900) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  function pixelRatio() {
+    const cap = detectLowEnd() ? 1 : 1.5;
+    return Math.min(window.devicePixelRatio || 1, cap);
+  }
+
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function ensure() {
     if (canvas) return;
     canvas = document.createElement("canvas");
@@ -21,15 +43,17 @@ window.MemoriumConfetti = (function () {
     document.body.appendChild(canvas);
     ctx = canvas.getContext("2d");
     const resize = () => {
-      canvas.width = window.innerWidth * devicePixelRatio;
-      canvas.height = window.innerHeight * devicePixelRatio;
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      const dpr = pixelRatio();
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener("resize", resize);
   }
 
   function burst(opts = {}) {
+    if (prefersReducedMotion()) return;
     ensure();
     const count = opts.count || 160;
     const colors = opts.colors || ["#f0b429", "#ffd978", "#7c5cff", "#3dd68c", "#ff6b7a", "#5eead4", "#fff", "#00f5ff"];

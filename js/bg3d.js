@@ -475,6 +475,25 @@ class AmbientBg {
       if (id !== this.themeId) this.setTheme(id);
     });
     this._mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    if (this.view) {
+      this.view.addEventListener(
+        "webglcontextlost",
+        (e) => {
+          e.preventDefault();
+          this.stopLoop(false);
+          this.ok = false;
+          useFallback(this.view, document.getElementById("webgl-fail"), FAIL_PT);
+          window.MemoriumBG3D = {
+            ok: false,
+            setTheme() {},
+            setPlaying() {},
+            notifyActivity() {}
+          };
+        },
+        false
+      );
+    }
   }
 }
 
