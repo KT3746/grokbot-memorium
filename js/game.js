@@ -495,14 +495,21 @@ function updateProgress() {
         else navigator.vibrate?.(16);
       } catch (_) {}
       hitStop(state.streak >= 2 ? 90 : 55);
-      na.classList.add("is-matched", "is-match-pop");
-      nb.classList.add("is-matched", "is-match-pop");
+      na.classList.add("is-matched");
+      nb.classList.add("is-matched");
+      const juice = !prefersReducedMotion();
+      if (juice) {
+        na.classList.add("is-match-pop");
+        nb.classList.add("is-match-pop");
+      }
       [na, nb].forEach((node) => {
-        const flash = document.createElement("span");
-        flash.className = "match-flash";
-        node.appendChild(flash);
-        setTimeout(() => flash.remove(), 560);
-        setTimeout(() => node.classList.remove("is-match-pop"), 420);
+        if (juice) {
+          const flash = document.createElement("span");
+          flash.className = "match-flash";
+          node.appendChild(flash);
+          setTimeout(() => flash.remove(), 560);
+          setTimeout(() => node.classList.remove("is-match-pop"), 420);
+        }
         if (window.MemoriumFX) MemoriumFX.sparkAt(node);
       });
       updateProgress();
@@ -886,14 +893,24 @@ function updateProgress() {
         state.flipped = [];
         state.lock = false;
       }
-    } else if (state.clockPaused && !state.ended && state.mode === "timed") {
-      state.clockPaused = false;
-      if (state.timeLeft <= 0) {
-        state.timeLeft = 0;
-        paintTime();
-        loseGame();
-      } else if (el.game && !el.game.hidden) {
-        startTimer();
+      // Suspende AudioContext (não só mute) — mesmo bar ECO/TETROK/1945
+      try { MemoriumAudio.suspend(); } catch (_) { /* ok */ }
+    } else {
+      if (state.clockPaused && !state.ended && state.mode === "timed") {
+        state.clockPaused = false;
+        if (state.timeLeft <= 0) {
+          state.timeLeft = 0;
+          paintTime();
+          loseGame();
+        } else if (el.game && !el.game.hidden) {
+          startTimer();
+        }
+      }
+      // Retoma áudio se partida/menu estava com trilha ligada
+      const playing = el.game && !el.game.hidden && !state.ended;
+      const onMenu = el.menu && !el.menu.hidden;
+      if (playing || onMenu) {
+        try { MemoriumAudio.resume(); } catch (_) { /* ok */ }
       }
     }
   });
