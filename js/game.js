@@ -81,7 +81,10 @@
     progressFg: document.getElementById("progress-fg"),
     score: document.getElementById("stat-score"),
     comboFill: document.getElementById("combo-fill"),
-    winScore: document.getElementById("win-score")
+    winScore: document.getElementById("win-score"),
+    winSummary: document.getElementById("win-summary"),
+    winAnnounce: document.getElementById("win-announce"),
+    menuDaily: document.getElementById("menu-daily")
   };
 
   function bestKey() {
@@ -121,6 +124,72 @@
       return true;
     }
     return false;
+  }
+
+
+  function todayKey() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function loadDailyMeta() {
+    try {
+      const raw = localStorage.getItem("memorium-daily");
+      if (!raw) return { date: todayKey(), plays: 0 };
+      const data = JSON.parse(raw);
+      if (!data || data.date !== todayKey()) return { date: todayKey(), plays: 0 };
+      return { date: data.date, plays: Math.max(0, data.plays | 0) };
+    } catch (_) {
+      return { date: todayKey(), plays: 0 };
+    }
+  }
+
+  function bumpDailyPlay() {
+    const data = loadDailyMeta();
+    data.plays += 1;
+    data.date = todayKey();
+    try { localStorage.setItem("memorium-daily", JSON.stringify(data)); } catch (_) {}
+    return data;
+  }
+
+  function loadBestCombo() {
+    try {
+      const n = parseInt(localStorage.getItem("memorium-best-combo") || "0", 10);
+      return Number.isFinite(n) ? Math.max(0, n) : 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function saveBestCombo(n) {
+    const prev = loadBestCombo();
+    if (n > prev) {
+      try { localStorage.setItem("memorium-best-combo", String(n)); } catch (_) {}
+      return true;
+    }
+    return false;
+  }
+
+  function updateDailyMetaUI() {
+    const line = document.getElementById("menu-daily");
+    if (!line) return;
+    const daily = loadDailyMeta();
+    const bestCombo = loadBestCombo();
+    const bits = [];
+    if (daily.plays > 0) {
+      bits.push(daily.plays === 1 ? "Hoje: 1 partida" : `Hoje: ${daily.plays} partidas`);
+    }
+    if (bestCombo > 0) bits.push(`Melhor combo: ×${bestCombo}`);
+    if (!bits.length) {
+      line.hidden = true;
+      line.textContent = "";
+      return;
+    }
+    line.hidden = false;
+    line.textContent = bits.join(" · ");
   }
 
   function formatTime(sec) {
@@ -219,6 +288,8 @@
     }
     state.dealLock = false;
     if (el.board) {
+      el.board.classList.remove("is-awaiting");
+      el.board.querySelectorAll(".card.is-anticipate").forEach((n) => n.classList.remove("is-anticipate"));
       el.board.querySelectorAll(".card.is-miss, .card.is-hint").forEach((n) => {
         n.classList.remove("is-miss", "is-hint");
         if (!n.classList.contains("is-matched")) {
@@ -469,6 +540,18 @@ function updateProgress() {
     if (back) back.setAttribute("aria-hidden", "true");
     state.flipped.push(index);
 
+    if (state.flipped.length === 1) {
+      // Antecipação do 2º toque (seguro p/ reduced-motion: só classe leve)
+      el.board.classList.add("is-awaiting");
+      if (!prefersReducedMotion()) {
+        el.board.querySelectorAll(".card:not(.is-flipped):not(.is-matched)").forEach((c) => {
+          c.classList.add("is-anticipate");
+        });
+      }
+      return;
+    }
+    el.board.classList.remove("is-awaiting");
+    el.board.querySelectorAll(".card.is-anticipate").forEach((c) => c.classList.remove("is-anticipate"));
     if (state.flipped.length < 2) return;
 
     state.moves += 1;
@@ -498,20 +581,30 @@ function updateProgress() {
       na.classList.add("is-matched");
       nb.classList.add("is-matched");
       const juice = !prefersReducedMotion();
+      const hot = state.streak >= 2;
       if (juice) {
         na.classList.add("is-match-pop");
         nb.classList.add("is-match-pop");
+        if (hot) {
+          na.classList.add("is-match-hot");
+          nb.classList.add("is-match-hot");
+        }
       }
       [na, nb].forEach((node) => {
         if (juice) {
           const flash = document.createElement("span");
-          flash.className = "match-flash";
+          flash.className = hot ? "match-flash match-flash-hot" : "match-flash";
           node.appendChild(flash);
-          setTimeout(() => flash.remove(), 560);
-          setTimeout(() => node.classList.remove("is-match-pop"), 420);
+          const ring = document.createElement("span");
+          ring.className = "match-ring";
+          node.appendChild(ring);
+          setTimeout(() => { flash.remove(); ring.remove(); }, 640);
+          setTimeout(() => node.classList.remove("is-match-pop", "is-match-hot"), 480);
         }
         if (window.MemoriumFX) MemoriumFX.sparkAt(node);
       });
+      // Persist best combo across sessions (soft meta)
+      if (state.bestStreak > 0) saveBestCombo(state.bestStreak);
       updateProgress();
       const left = DIFFS[state.difficulty].pairs - state.matches;
       if (left > 0 && left <= 3) el.board.classList.add("is-dim");
@@ -550,6 +643,8 @@ function updateProgress() {
       document.querySelector(".hud")?.classList.remove("is-hot");
       document.getElementById("app")?.classList.remove("is-combo");
       updateScoreUI();
+      el.board.classList.remove("is-awaiting");
+      el.board.querySelectorAll(".card.is-anticipate").forEach((c) => c.classList.remove("is-anticipate"));
       na.classList.add("is-miss");
       nb.classList.add("is-miss");
       state.missTimer = setTimeout(() => {
@@ -668,8 +763,17 @@ function updateProgress() {
     const isNew = saveBest(record);
     const best = loadBest();
 
+    saveBestCombo(state.bestStreak);
+    bumpDailyPlay();
+    updateDailyMetaUI();
+
     el.winEyebrow.textContent = state.mode === "timed" ? "relógio dominado" : "vitória";
     el.winTitle.textContent = WIN_TITLES[Math.floor(Math.random() * WIN_TITLES.length)];
+    if (el.winSummary) {
+      const modeLabel = state.mode === "timed" ? "Relógio" : "Clássico";
+      const themeName = window.MEMORIUM_THEMES[state.theme]?.name || state.theme;
+      el.winSummary.textContent = `${modeLabel} · ${DIFFS[state.difficulty].label} · ${themeName} · ${pairs} pares`;
+    }
     el.winStars.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
     el.winStars.setAttribute("aria-label", `${stars} de 3 estrelas`);
     if (el.winScore) el.winScore.textContent = String(state.score);
@@ -677,6 +781,9 @@ function updateProgress() {
     el.winTimeLabel.textContent = state.mode === "timed" ? "Sobra" : "Tempo";
     el.winTime.textContent = state.mode === "timed" ? formatTime(state.timeLeft) : formatTime(state.elapsed);
     el.winStreak.textContent = String(state.bestStreak);
+    if (el.winAnnounce) {
+      el.winAnnounce.textContent = `Vitória. ${stars} de 3 estrelas. ${state.score} pontos. ${state.moves} movimentos.`;
+    }
     const perfectLine = perfect ? "Partida perfeita! +250 pts. " : "";
     if (state.mode === "timed") {
       el.winBest.textContent = perfectLine + (isNew
@@ -707,6 +814,8 @@ function updateProgress() {
     state.lock = true;
     MemoriumAudio.miss();
     // não grava derrota como "melhor" — só vitórias atualizam recorde
+    bumpDailyPlay();
+    updateDailyMetaUI();
     if (el.loseScore) {
       el.loseScore.hidden = false;
       el.loseScore.textContent = `Pontuação: ${state.score}`;
@@ -734,6 +843,7 @@ function updateProgress() {
     MemoriumAudio.setAmbientLevel(0.045);
     MemoriumAudio.setAmbient(true);
     updateMenuBest();
+    updateDailyMetaUI();
     document.getElementById("btn-start").focus();
   }
 
@@ -849,6 +959,7 @@ function updateProgress() {
   updateModeHint();
   bind();
   updateMenuBest();
+  updateDailyMetaUI();
   fitViewport();
   window.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
