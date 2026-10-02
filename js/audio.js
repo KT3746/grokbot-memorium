@@ -161,8 +161,22 @@ window.MemoriumAudio = (function () {
     ambGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, ambLevel), c.currentTime + 0.8);
   }
 
+  function suspend() {
+    if (ctx && ctx.state === "running") {
+      try { ctx.suspend(); } catch (_) { /* ok */ }
+    }
+  }
+
+  function resume() {
+    if (!muted && ctx && ctx.state === "suspended") {
+      try { ctx.resume(); } catch (_) { /* ok */ }
+    }
+  }
+
   return {
     unlock() { ensure(); },
+    suspend,
+    resume,
     isMuted() { return muted; },
     setMuted(v) {
       muted = !!v;
