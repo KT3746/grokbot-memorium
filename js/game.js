@@ -49,6 +49,7 @@
     hintTimer: null,
     dealTimer: null,
     dealLock: false,
+    introTimers: [],
     ended: false
   };
 
@@ -84,7 +85,14 @@
     winScore: document.getElementById("win-score"),
     winSummary: document.getElementById("win-summary"),
     winAnnounce: document.getElementById("win-announce"),
-    menuDaily: document.getElementById("menu-daily")
+    menuDaily: document.getElementById("menu-daily"),
+    intro: document.getElementById("intro"),
+    introNum: document.getElementById("intro-num"),
+    introSub: document.getElementById("intro-sub"),
+    timeBar: document.getElementById("time-bar"),
+    timeFill: document.getElementById("time-fill"),
+    leftChip: document.getElementById("left-chip"),
+    hintBadge: document.getElementById("hint-badge")
   };
 
   function bestKey() {
@@ -287,6 +295,7 @@
       state.dealTimer = null;
     }
     state.dealLock = false;
+    clearIntro();
     if (el.board) {
       el.board.classList.remove("is-awaiting");
       el.board.querySelectorAll(".card.is-anticipate").forEach((n) => n.classList.remove("is-anticipate"));
@@ -303,6 +312,121 @@
     }
     state.flipped = [];
     state.lock = false;
+  }
+
+  /* —— Wave 3: abertura 3·2·1 + espiada —— */
+  const PEEK_MS = { easy: 1700, medium: 1350, hard: 1050 };
+
+  function clearIntro() {
+    (state.introTimers || []).forEach((t) => clearTimeout(t));
+    state.introTimers = [];
+    if (el.intro) {
+      el.intro.hidden = true;
+      el.intro.classList.remove("is-go", "is-peek");
+    }
+    if (el.board) {
+      el.board.classList.remove("is-peeking");
+      el.board.querySelectorAll(".card.is-peek").forEach((n) => {
+        n.classList.remove("is-peek");
+        if (!n.classList.contains("is-matched")) n.classList.remove("is-flipped");
+      });
+    }
+  }
+
+  function introLater(fn, ms) {
+    const t = setTimeout(fn, ms);
+    state.introTimers.push(t);
+  }
+
+  function showIntroText(num, sub, cls) {
+    if (!el.intro) return;
+    el.intro.hidden = false;
+    el.intro.classList.remove("is-go", "is-peek");
+    if (cls) el.intro.classList.add(cls);
+    el.introNum.textContent = num;
+    el.introSub.textContent = sub || "";
+    // reinicia animação
+    el.introNum.classList.remove("is-tick");
+    void el.introNum.offsetWidth;
+    el.introNum.classList.add("is-tick");
+  }
+
+  function runIntro() {
+    clearIntro();
+    state.dealLock = true;
+    const reduced = prefersReducedMotion();
+    const step = reduced ? 450 : 620;
+    const peek = PEEK_MS[state.difficulty] || 1300;
+    let t = 520; // espera o deal assentar
+    ["3", "2", "1"].forEach((n) => {
+      introLater(() => {
+        showIntroText(n, "Prepare-se para memorizar");
+        try { MemoriumAudio.tick?.(); } catch (_) {}
+        try { navigator.vibrate?.(8); } catch (_) {}
+      }, t);
+      t += step;
+    });
+    introLater(() => {
+      if (el.intro && el.board) el.intro.style.setProperty("--peek-y", `${el.board.offsetTop}px`);
+      showIntroText("Memorize!", "vão virar", "is-peek");
+      el.board.classList.add("is-peeking");
+      el.board.querySelectorAll(".card").forEach((n) => n.classList.add("is-flipped", "is-peek"));
+      try { MemoriumAudio.flip(); } catch (_) {}
+    }, t);
+    t += peek;
+    introLater(() => {
+      el.board.querySelectorAll(".card.is-peek").forEach((n) => n.classList.remove("is-flipped", "is-peek"));
+      el.board.classList.remove("is-peeking");
+      showIntroText("Vai!", "", "is-go");
+      try { MemoriumAudio.go?.(); } catch (_) {}
+      try { navigator.vibrate?.(14); } catch (_) {}
+    }, t);
+    t += 380;
+    introLater(() => {
+      state.dealLock = false;
+      if (el.intro) el.intro.hidden = true;
+      const first = el.board.querySelector(".card");
+      if (first) first.focus({ preventScroll: true });
+    }, t);
+    t += 260;
+    introLater(() => { if (el.intro) el.intro.classList.remove("is-go"); }, t);
+  }
+
+  /* —— Wave 3: HUD (barra de tempo, faltam N, dica) —— */
+  function updateLeftChip() {
+    if (!el.leftChip) return;
+    const left = DIFFS[state.difficulty].pairs - state.matches;
+    if (left <= 0 || state.matches === 0) {
+      el.leftChip.hidden = true;
+      return;
+    }
+    el.leftChip.hidden = false;
+    el.leftChip.classList.toggle("is-last", left === 1);
+    el.leftChip.textContent = left === 1 ? "Último par!" : `Faltam ${left}`;
+  }
+
+  function paintTimeBar() {
+    if (!el.timeBar || !el.timeFill) return;
+    if (state.mode !== "timed") {
+      el.timeBar.hidden = true;
+      return;
+    }
+    el.timeBar.hidden = false;
+    const cap = DIFFS[state.difficulty].timedStart;
+    const pct = Math.max(0, Math.min(1, state.timeLeft / cap));
+    el.timeFill.style.transform = `scaleX(${pct})`;
+    el.timeBar.classList.toggle("is-low", state.timeLeft <= 15 && state.timeLeft > 8);
+    el.timeBar.classList.toggle("is-critical", state.timeLeft <= 8);
+  }
+
+  function popAtTime(text) {
+    const stat = el.time && el.time.closest(".stat");
+    if (!stat) return;
+    const tag = document.createElement("span");
+    tag.className = "time-pop";
+    tag.textContent = text;
+    stat.appendChild(tag);
+    setTimeout(() => tag.remove(), 900);
   }
 
   function layoutForBoard(diff) {
@@ -355,9 +479,11 @@ function updateProgress() {
     if (state.mode === "timed") {
       el.time.textContent = formatTime(state.timeLeft);
       el.time.classList.toggle("is-urgent", state.timeLeft <= 10);
+      paintTimeBar();
     } else {
       el.time.textContent = formatTime(state.elapsed);
       el.time.classList.remove("is-urgent");
+      paintTimeBar();
     }
   }
 
@@ -433,7 +559,10 @@ function updateProgress() {
     paintTime();
     el.hint.disabled = false;
     el.hint.style.opacity = "1";
+    if (el.hintBadge) el.hintBadge.textContent = "1";
+    el.hint.classList.remove("is-spent");
     updateProgress();
+    updateLeftChip();
     updateScoreUI();
 
     el.board.classList.remove("is-dim");
@@ -512,8 +641,7 @@ function updateProgress() {
       }
     }
 
-    const first = el.board.querySelector(".card");
-    if (first) first.focus({ preventScroll: true });
+    runIntro();
   }
 
   function getCardEl(index) {
@@ -528,6 +656,7 @@ function updateProgress() {
 
     MemoriumAudio.unlock();
     MemoriumAudio.flip();
+    try { navigator.vibrate?.(6); } catch (_) {}
 
     if (!state.timerId) startTimer();
 
@@ -606,6 +735,7 @@ function updateProgress() {
       // Persist best combo across sessions (soft meta)
       if (state.bestStreak > 0) saveBestCombo(state.bestStreak);
       updateProgress();
+      updateLeftChip();
       const left = DIFFS[state.difficulty].pairs - state.matches;
       if (left > 0 && left <= 3) el.board.classList.add("is-dim");
       na.disabled = true;
@@ -622,11 +752,12 @@ function updateProgress() {
         if (state.endsAt) state.endsAt += bonus * 1000;
         else state.endsAt = Date.now() + state.timeLeft * 1000;
         paintTime();
-        spawnBonusPop(`+${bonus}s · +${gained}`);
+        popAtTime(`+${bonus}s`);
+        spawnBonusPop(state.streak >= 2 ? `×${state.streak} · +${gained}` : `+${gained}`, na, nb, state.streak);
       } else if (state.streak >= 2) {
-        spawnBonusPop(`Combo ×${state.streak} · +${gained}`);
+        spawnBonusPop(`Combo ×${state.streak} · +${gained}`, na, nb, state.streak);
       } else {
-        spawnBonusPop(`+${gained}`);
+        spawnBonusPop(`+${gained}`, na, nb, state.streak);
       }
 
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
@@ -638,6 +769,7 @@ function updateProgress() {
       void app.offsetWidth;
       app.classList.add("is-shake");
       setTimeout(() => app.classList.remove("is-shake"), 300);
+      if (state.streak >= 2) spawnBonusPop(`Combo ×${state.streak} perdido`, na, nb, -1);
       state.streak = 0;
       el.streak.textContent = "0";
       document.querySelector(".hud")?.classList.remove("is-hot");
@@ -666,12 +798,26 @@ function updateProgress() {
     }
   }
 
-  function spawnBonusPop(text) {
+  function spawnBonusPop(text, na, nb, tier) {
     const pop = document.createElement("div");
     pop.className = "bonus-pop";
+    if (tier === -1) pop.classList.add("is-lost");
+    else if (tier >= 4) pop.classList.add("is-tier3");
+    else if (tier >= 3) pop.classList.add("is-tier2");
+    else if (tier >= 2) pop.classList.add("is-tier1");
     pop.textContent = text;
+    if (na && nb && el.game) {
+      const g = el.game.getBoundingClientRect();
+      const ra = na.getBoundingClientRect();
+      const rb = nb.getBoundingClientRect();
+      const cx = (ra.left + ra.right + rb.left + rb.right) / 4 - g.left;
+      const cy = (ra.top + ra.bottom + rb.top + rb.bottom) / 4 - g.top;
+      const pad = 70;
+      pop.style.left = `${Math.max(pad, Math.min(g.width - pad, cx))}px`;
+      pop.style.top = `${Math.max(40, cy)}px`;
+    }
     el.game.appendChild(pop);
-    setTimeout(() => pop.remove(), 900);
+    setTimeout(() => pop.remove(), 950);
   }
 
   function ensureAmbient() {
@@ -707,6 +853,8 @@ function updateProgress() {
     el.moves.textContent = String(state.moves);
     el.hint.disabled = true;
     el.hint.style.opacity = "0.4";
+    el.hint.classList.add("is-spent");
+    if (el.hintBadge) el.hintBadge.textContent = "0";
     MemoriumAudio.click();
 
     if (!state.timerId) startTimer();
@@ -767,6 +915,7 @@ function updateProgress() {
     bumpDailyPlay();
     updateDailyMetaUI();
 
+    if (el.leftChip) el.leftChip.hidden = true;
     el.winEyebrow.textContent = state.mode === "timed" ? "relógio dominado" : "vitória";
     el.winTitle.textContent = WIN_TITLES[Math.floor(Math.random() * WIN_TITLES.length)];
     if (el.winSummary) {

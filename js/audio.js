@@ -175,6 +175,8 @@ window.MemoriumAudio = (function () {
 
   return {
     unlock() { ensure(); },
+    tick() { tone(880, 0.09, "triangle", 0.06); },
+    go() { tone(660, 0.12, "triangle", 0.07); tone(990, 0.16, "triangle", 0.06, (ctx ? ctx.currentTime : 0) + 0.08); },
     suspend,
     resume,
     isMuted() { return muted; },
