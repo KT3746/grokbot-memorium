@@ -50,6 +50,9 @@
     dealTimer: null,
     dealLock: false,
     introTimers: [],
+    seen: null,
+    paused: false,
+    pausedHadTimer: false,
     ended: false
   };
 
@@ -92,8 +95,46 @@
     timeBar: document.getElementById("time-bar"),
     timeFill: document.getElementById("time-fill"),
     leftChip: document.getElementById("left-chip"),
-    hintBadge: document.getElementById("hint-badge")
+    hintBadge: document.getElementById("hint-badge"),
+    overlayPause: document.getElementById("overlay-pause"),
+    pauseLine: document.getElementById("pause-line"),
+    pauseFill: document.getElementById("pause-fill"),
+    pauseBtn: document.getElementById("btn-pause"),
+    nextBtn: document.getElementById("btn-next")
   };
+
+  const DIFF_ORDER = ["easy", "medium", "hard"];
+
+  /* —— Wave 4: estrelas por dificuldade no menu —— */
+  function starsKey(diff) {
+    return `memorium-stars-${state.mode}-${diff}-${state.theme}`;
+  }
+  function loadStars(diff) {
+    try {
+      const n = parseInt(localStorage.getItem(starsKey(diff)) || "0", 10);
+      return Number.isFinite(n) ? Math.max(0, Math.min(3, n)) : 0;
+    } catch (_) { return 0; }
+  }
+  function saveStars(n) {
+    if (n > loadStars(state.difficulty)) {
+      try { localStorage.setItem(starsKey(state.difficulty), String(n)); } catch (_) {}
+      return true;
+    }
+    return false;
+  }
+  function updateDiffStars() {
+    document.querySelectorAll("[data-stars-for]").forEach((node) => {
+      const d = node.getAttribute("data-stars-for");
+      const n = loadStars(d);
+      node.textContent = n ? "★".repeat(n) + "☆".repeat(3 - n) : "";
+      node.classList.toggle("is-full", n === 3);
+      const btn = node.closest(".seg-btn");
+      if (btn) {
+        const label = btn.querySelector(".seg-txt")?.textContent || d;
+        btn.setAttribute("aria-label", n ? `${label}, recorde ${n} de 3 estrelas` : label);
+      }
+    });
+  }
 
   function bestKey() {
     return `memorium-best-${state.mode}-${state.difficulty}-${state.theme}`;
@@ -234,6 +275,7 @@
   }
 
   function updateMenuBest() {
+    updateDiffStars();
     const best = loadBest();
     if (!best) {
       el.menuBest.hidden = true;
@@ -546,11 +588,14 @@ function updateProgress() {
     state.streak = 0;
     state.bestStreak = 0;
     state.score = 0;
+    state.memoryHits = 0;
     state.elapsed = 0;
     state.timeLeft = diff.timedStart;
     state.hintUsed = false;
     state.focusIndex = 0;
     state.dealLock = true;
+    state.seen = new Set();
+    closePause(false);
 
     el.moves.textContent = "0";
     el.streak.textContent = "0";
@@ -692,6 +737,13 @@ function updateProgress() {
     const cb = state.cards[b];
     const na = getCardEl(a);
     const nb = getCardEl(b);
+    // Wave 4: memória — a carta já tinha aparecido antes desta jogada?
+    const seen = state.seen || new Set();
+    const partnerOf = (i) => state.cards.findIndex((c, j) => j !== i && c.pairId === state.cards[i].pairId);
+    const fromMemory = seen.has(a) || seen.has(b);
+    const missedKnown = [a, b].some((i) => seen.has(partnerOf(i)));
+    seen.add(a); seen.add(b);
+    state.seen = seen;
 
     if (ca.pairId === cb.pairId) {
       MemoriumAudio.match();
@@ -745,7 +797,15 @@ function updateProgress() {
       state.flipped = [];
       state.lock = false;
 
-      const gained = awardMatchPoints();
+      let gained = awardMatchPoints();
+      if (fromMemory) {
+        state.score += 50;
+        gained += 50;
+        state.memoryHits = (state.memoryHits || 0) + 1;
+        updateScoreUI();
+        bumpScore();
+      }
+      const memTag = fromMemory ? "De memória · " : "";
       if (state.mode === "timed") {
         const bonus = DIFFS[state.difficulty].timedBonus;
         state.timeLeft += bonus;
@@ -753,11 +813,11 @@ function updateProgress() {
         else state.endsAt = Date.now() + state.timeLeft * 1000;
         paintTime();
         popAtTime(`+${bonus}s`);
-        spawnBonusPop(state.streak >= 2 ? `×${state.streak} · +${gained}` : `+${gained}`, na, nb, state.streak);
+        spawnBonusPop(memTag + (state.streak >= 2 ? `×${state.streak} · +${gained}` : `+${gained}`), na, nb, state.streak, fromMemory);
       } else if (state.streak >= 2) {
-        spawnBonusPop(`Combo ×${state.streak} · +${gained}`, na, nb, state.streak);
+        spawnBonusPop(`${memTag}Combo ×${state.streak} · +${gained}`, na, nb, state.streak, fromMemory);
       } else {
-        spawnBonusPop(`+${gained}`, na, nb, state.streak);
+        spawnBonusPop(`${memTag}+${gained}`, na, nb, state.streak, fromMemory);
       }
 
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
@@ -770,6 +830,9 @@ function updateProgress() {
       app.classList.add("is-shake");
       setTimeout(() => app.classList.remove("is-shake"), 300);
       if (state.streak >= 2) spawnBonusPop(`Combo ×${state.streak} perdido`, na, nb, -1);
+      else if (missedKnown) {
+        spawnBonusPop("Já tinha visto o par!", na, nb, -2);
+      }
       state.streak = 0;
       el.streak.textContent = "0";
       document.querySelector(".hud")?.classList.remove("is-hot");
@@ -798,10 +861,20 @@ function updateProgress() {
     }
   }
 
-  function spawnBonusPop(text, na, nb, tier) {
+  function bumpScore() {
+    const line = el.score && el.score.closest(".score-line");
+    if (!line) return;
+    line.classList.remove("is-bump");
+    void line.offsetWidth;
+    line.classList.add("is-bump");
+  }
+
+  function spawnBonusPop(text, na, nb, tier, memory) {
     const pop = document.createElement("div");
     pop.className = "bonus-pop";
-    if (tier === -1) pop.classList.add("is-lost");
+    if (memory) pop.classList.add("is-memory");
+    if (tier === -2) pop.classList.add("is-nudge");
+    else if (tier === -1) pop.classList.add("is-lost");
     else if (tier >= 4) pop.classList.add("is-tier3");
     else if (tier >= 3) pop.classList.add("is-tier2");
     else if (tier >= 2) pop.classList.add("is-tier1");
@@ -923,7 +996,20 @@ function updateProgress() {
       const themeName = window.MEMORIUM_THEMES[state.theme]?.name || state.theme;
       el.winSummary.textContent = `${modeLabel} · ${DIFFS[state.difficulty].label} · ${themeName} · ${pairs} pares`;
     }
+    const starRecord = saveStars(stars);
     el.winStars.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
+    el.winStars.classList.toggle("is-new", starRecord);
+    if (el.nextBtn) {
+      const idx = DIFF_ORDER.indexOf(state.difficulty);
+      const next = DIFF_ORDER[idx + 1];
+      if (next) {
+        el.nextBtn.hidden = false;
+        el.nextBtn.dataset.next = next;
+        el.nextBtn.textContent = `Próximo: ${DIFFS[next].label} →`;
+      } else {
+        el.nextBtn.hidden = true;
+      }
+    }
     el.winStars.setAttribute("aria-label", `${stars} de 3 estrelas`);
     if (el.winScore) el.winScore.textContent = String(state.score);
     el.winMoves.textContent = String(state.moves);
@@ -933,7 +1019,8 @@ function updateProgress() {
     if (el.winAnnounce) {
       el.winAnnounce.textContent = `Vitória. ${stars} de 3 estrelas. ${state.score} pontos. ${state.moves} movimentos.`;
     }
-    const perfectLine = perfect ? "Partida perfeita! +250 pts. " : "";
+    const memHits = state.memoryHits || 0;
+    const perfectLine = (perfect ? "Partida perfeita! +250 pts. " : "") + (memHits ? `De memória: ${memHits}×. ` : "");
     if (state.mode === "timed") {
       el.winBest.textContent = perfectLine + (isNew
         ? "Novo recorde neste modo!"
@@ -952,7 +1039,7 @@ function updateProgress() {
     el.overlay.classList.add("is-cinematic");
     el.overlay.hidden = false;
     setOverlayOpen(true);
-    document.getElementById("btn-replay").focus();
+    (el.nextBtn && !el.nextBtn.hidden ? el.nextBtn : document.getElementById("btn-replay")).focus();
   }
 
   function loseGame() {
@@ -981,6 +1068,7 @@ function updateProgress() {
     if (window.MemoriumConfetti) MemoriumConfetti.clear();
     if (window.MemoriumFX) MemoriumFX.clear();
     state.ended = true;
+    closePause(false);
     el.overlay.hidden = true;
     el.overlay.classList.remove("is-cinematic");
     el.overlayLose.hidden = true;
@@ -994,6 +1082,57 @@ function updateProgress() {
     updateMenuBest();
     updateDailyMetaUI();
     document.getElementById("btn-start").focus();
+  }
+
+  /* —— Wave 4: pausa (botão ❚❚, ← e troca de aba) —— */
+  function canPause() {
+    return el.game && !el.game.hidden && !state.ended && !state.paused && !state.dealLock;
+  }
+
+  function openPause(reason) {
+    if (!canPause()) return false;
+    if (state.timerId) {
+      if (state.mode === "timed") state.timeLeft = Math.max(0, Math.ceil((state.endsAt - Date.now()) / 1000));
+      else state.elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+      state.pausedHadTimer = true;
+      stopTimer();
+    } else {
+      state.pausedHadTimer = state.clockPaused;
+    }
+    state.clockPaused = false;
+    state.paused = true;
+    paintTime();
+    const pairs = DIFFS[state.difficulty].pairs;
+    if (el.pauseLine) {
+      const clock = state.mode === "timed" ? `restam ${formatTime(state.timeLeft)}` : `${formatTime(state.elapsed)} de jogo`;
+      el.pauseLine.textContent = `${state.matches} / ${pairs} pares · ${state.moves} mov. · ${clock}`;
+    }
+    if (el.pauseFill) el.pauseFill.style.transform = `scaleX(${pairs ? state.matches / pairs : 0})`;
+    el.board.classList.add("is-paused");
+    el.overlayPause.hidden = false;
+    setOverlayOpen(true);
+    try { MemoriumAudio.click(); } catch (_) {}
+    try { if (reason !== "hidden") navigator.vibrate?.(10); } catch (_) {}
+    if (reason !== "hidden") document.getElementById("btn-resume")?.focus();
+    return true;
+  }
+
+  function closePause(resume) {
+    if (!el.overlayPause) return;
+    const was = state.paused;
+    state.paused = false;
+    el.overlayPause.hidden = true;
+    if (el.board) el.board.classList.remove("is-paused");
+    if (!was) return;
+    setOverlayOpen(false);
+    if (resume && !state.ended) {
+      if (state.pausedHadTimer) startTimer();
+      try { MemoriumAudio.resume(); } catch (_) {}
+      try { MemoriumAudio.go?.(); } catch (_) {}
+      const first = el.board.querySelector(".card:not(.is-matched)");
+      if (first) first.focus({ preventScroll: true });
+    }
+    state.pausedHadTimer = false;
   }
 
   function startGame() {
@@ -1080,7 +1219,22 @@ function updateProgress() {
     });
 
     document.getElementById("btn-start").addEventListener("click", startGame);
-    document.getElementById("btn-back").addEventListener("click", showMenu);
+    document.getElementById("btn-back").addEventListener("click", () => {
+      // ← abre a pausa (não perde a partida por toque acidental)
+      if (!openPause("back")) showMenu();
+    });
+    el.pauseBtn?.addEventListener("click", () => openPause("button"));
+    document.getElementById("btn-resume")?.addEventListener("click", () => closePause(true));
+    document.getElementById("btn-restart")?.addEventListener("click", () => { closePause(false); startGame(); });
+    document.getElementById("btn-menu-pause")?.addEventListener("click", showMenu);
+    el.overlayPause?.addEventListener("click", (e) => { if (e.target === el.overlayPause) closePause(true); });
+    el.nextBtn?.addEventListener("click", () => {
+      const next = el.nextBtn.dataset.next;
+      if (!next || !DIFFS[next]) return startGame();
+      state.difficulty = next;
+      setSeg("diff-group", "diff", next);
+      startGame();
+    });
     document.getElementById("btn-replay").addEventListener("click", startGame);
     document.getElementById("btn-menu").addEventListener("click", showMenu);
     document.getElementById("btn-replay-lose").addEventListener("click", startGame);
@@ -1111,6 +1265,9 @@ function updateProgress() {
   updateDailyMetaUI();
   fitViewport();
   window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" && e.key !== "p" && e.key !== "P") return;
+    if (state.paused) { e.preventDefault(); closePause(true); return; }
+    if (canPause()) { e.preventDefault(); openPause("key"); return; }
     if (e.key !== "Escape") return;
     const winOpen = el.overlay && !el.overlay.hidden;
     const loseOpen = el.overlayLose && !el.overlayLose.hidden;
@@ -1122,6 +1279,7 @@ function updateProgress() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
+
       if (state.mode === "timed" && state.timerId && !state.ended) {
         state.timeLeft = Math.max(0, Math.ceil((state.endsAt - Date.now()) / 1000));
         paintTime();
@@ -1153,10 +1311,12 @@ function updateProgress() {
         state.flipped = [];
         state.lock = false;
       }
+      // Wave 4: trocar de app/aba pausa a partida (cartas cobertas)
+      openPause("hidden");
       // Suspende AudioContext (não só mute) — mesmo bar ECO/TETROK/1945
       try { MemoriumAudio.suspend(); } catch (_) { /* ok */ }
     } else {
-      if (state.clockPaused && !state.ended && state.mode === "timed") {
+      if (state.clockPaused && !state.ended && !state.paused && state.mode === "timed") {
         state.clockPaused = false;
         if (state.timeLeft <= 0) {
           state.timeLeft = 0;
