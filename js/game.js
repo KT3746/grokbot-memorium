@@ -100,6 +100,7 @@
     pauseLine: document.getElementById("pause-line"),
     pauseFill: document.getElementById("pause-fill"),
     pauseBtn: document.getElementById("btn-pause"),
+    milestone: document.getElementById("milestone"),
     nextBtn: document.getElementById("btn-next")
   };
 
@@ -434,6 +435,110 @@
     introLater(() => { if (el.intro) el.intro.classList.remove("is-go"); }, t);
   }
 
+
+  /* —— Wave 5: ripple, marcos HUD, ímã, pontos voando —— */
+  function hideMilestone() {
+    if (!el.milestone) return;
+    el.milestone.hidden = true;
+    el.milestone.className = "milestone";
+    el.milestone.textContent = "";
+  }
+
+  function showMilestone(text, kind) {
+    if (!el.milestone || !text) return;
+    el.milestone.hidden = false;
+    el.milestone.className = "milestone" + (kind ? " is-" + kind : "");
+    el.milestone.textContent = text;
+    clearTimeout(state.milestoneTimer);
+    state.milestoneTimer = setTimeout(hideMilestone, 1500);
+    try { navigator.vibrate?.(kind === "combo" ? [8, 24, 12] : 10); } catch (_) {}
+  }
+
+  function checkMilestones() {
+    const pairs = DIFFS[state.difficulty].pairs;
+    if (!pairs) return;
+    const left = pairs - state.matches;
+    if (!state.milestoneHalf && state.matches >= Math.ceil(pairs / 2) && left > 2) {
+      state.milestoneHalf = true;
+      showMilestone("Meio caminho!", "half");
+    } else if (!state.milestoneNear && left > 0 && left <= 2 && state.matches > 0) {
+      state.milestoneNear = true;
+      showMilestone(left === 1 ? "Último par!" : "Quase lá!", "near");
+    }
+    if (state.streak >= 3 && state.streak !== state.lastComboBanner && (state.streak === 3 || state.streak === 5 || state.streak % 2 === 0)) {
+      state.lastComboBanner = state.streak;
+      showMilestone("Combo ×" + state.streak + "!", "combo");
+    }
+  }
+
+  function spawnTouchRipple(btn, ev) {
+    if (!btn || prefersReducedMotion()) return;
+    const r = btn.getBoundingClientRect();
+    const x = (ev.clientX != null ? ev.clientX : r.left + r.width / 2) - r.left;
+    const y = (ev.clientY != null ? ev.clientY : r.top + r.height / 2) - r.top;
+    const ink = document.createElement("span");
+    ink.className = "touch-ripple";
+    const size = Math.max(r.width, r.height) * 1.35;
+    ink.style.width = size + "px";
+    ink.style.height = size + "px";
+    ink.style.left = x + "px";
+    ink.style.top = y + "px";
+    btn.appendChild(ink);
+    setTimeout(() => ink.remove(), 520);
+  }
+
+  function magnetMatch(na, nb) {
+    if (!na || !nb || prefersReducedMotion()) return;
+    const ra = na.getBoundingClientRect();
+    const rb = nb.getBoundingClientRect();
+    const midx = (ra.left + ra.right + rb.left + rb.right) / 4;
+    const midy = (ra.top + ra.bottom + rb.top + rb.bottom) / 4;
+    const pull = (node, rect) => {
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = (midx - cx) * 0.28;
+      const dy = (midy - cy) * 0.28;
+      node.style.setProperty("--mx", dx.toFixed(1) + "px");
+      node.style.setProperty("--my", dy.toFixed(1) + "px");
+      node.classList.add("is-magnet");
+      setTimeout(() => {
+        node.classList.remove("is-magnet");
+        node.style.removeProperty("--mx");
+        node.style.removeProperty("--my");
+      }, 420);
+    };
+    pull(na, ra);
+    pull(nb, rb);
+  }
+
+  function flyScoreToHud(amount, na, nb) {
+    if (!amount || prefersReducedMotion() || !el.game || !el.score) return;
+    const target = el.score.getBoundingClientRect();
+    const g = el.game.getBoundingClientRect();
+    let sx, sy;
+    if (na && nb) {
+      const ra = na.getBoundingClientRect();
+      const rb = nb.getBoundingClientRect();
+      sx = (ra.left + ra.right + rb.left + rb.right) / 4;
+      sy = (ra.top + ra.bottom + rb.top + rb.bottom) / 4;
+    } else {
+      sx = g.left + g.width / 2;
+      sy = g.top + g.height * 0.45;
+    }
+    const chip = document.createElement("span");
+    chip.className = "score-fly";
+    chip.textContent = "+" + amount;
+    chip.style.left = (sx - g.left) + "px";
+    chip.style.top = (sy - g.top) + "px";
+    const dx = target.left + target.width / 2 - sx;
+    const dy = target.top + target.height / 2 - sy;
+    chip.style.setProperty("--fly-x", dx.toFixed(1) + "px");
+    chip.style.setProperty("--fly-y", dy.toFixed(1) + "px");
+    el.game.appendChild(chip);
+    setTimeout(() => chip.remove(), 780);
+    bumpScore();
+  }
+
   /* —— Wave 3: HUD (barra de tempo, faltam N, dica) —— */
   function updateLeftChip() {
     if (!el.leftChip) return;
@@ -595,6 +700,10 @@ function updateProgress() {
     state.focusIndex = 0;
     state.dealLock = true;
     state.seen = new Set();
+    state.milestoneHalf = false;
+    state.milestoneNear = false;
+    state.lastComboBanner = 0;
+    hideMilestone();
     closePause(false);
 
     el.moves.textContent = "0";
@@ -820,6 +929,7 @@ function updateProgress() {
         spawnBonusPop(`${memTag}+${gained}`, na, nb, state.streak, fromMemory);
       }
 
+      flyScoreToHud(gained, na, nb);
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
     } else {
       MemoriumAudio.miss();
@@ -1254,6 +1364,24 @@ function updateProgress() {
     el.mute.addEventListener("click", toggleMute);
 
     el.board.addEventListener("keydown", onBoardKey);
+
+    // Wave 5: puxar o HUD para baixo pausa (polegar no celular)
+    const hud = document.querySelector(".hud");
+    if (hud) {
+      let hudPt = null;
+      hud.addEventListener("pointerdown", (ev) => {
+        if (ev.target.closest("button")) return;
+        if (ev.button != null && ev.button !== 0) return;
+        hudPt = { y: ev.clientY, id: ev.pointerId };
+      }, { passive: true });
+      hud.addEventListener("pointerup", (ev) => {
+        if (!hudPt || hudPt.id !== ev.pointerId) return;
+        const dy = ev.clientY - hudPt.y;
+        hudPt = null;
+        if (dy > 56) openPause("swipe");
+      }, { passive: true });
+      hud.addEventListener("pointercancel", () => { hudPt = null; }, { passive: true });
+    }
   }
 
   MemoriumAudio.loadMute();

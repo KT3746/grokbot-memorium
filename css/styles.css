@@ -1658,3 +1658,126 @@ html[data-theme="comida"] .face-front {
   .score-line.is-bump strong, .stars.is-new { animation: none !important; }
   .board.is-paused { filter: none; }
 }
+
+/* --- Wave 5: ripple, marcos HUD, ima do par, pontos voando --- */
+.touch-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 8;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(240,180,41,0.25) 45%, transparent 70%);
+  animation: touchRipple 0.5s ease-out forwards;
+  mix-blend-mode: screen;
+}
+@keyframes touchRipple {
+  0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.15); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+.milestone {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--safe-t, 0px) + 64px);
+  transform: translateX(-50%);
+  z-index: 14;
+  pointer-events: none;
+  margin: 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(0.95rem, 3.8vw, 1.15rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1b1200;
+  background: linear-gradient(180deg, #ffd36a, var(--accent));
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 22px rgba(240,180,41,0.35);
+  animation: milestoneIn 1.5s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  white-space: nowrap;
+}
+.milestone[hidden] { display: none !important; }
+.milestone.is-half {
+  color: #06210f;
+  background: linear-gradient(180deg, #7dffb3, var(--good));
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 22px rgba(61,214,140,0.4);
+}
+.milestone.is-near {
+  color: #1a0a18;
+  background: linear-gradient(180deg, #ffb0e8, #ff7ad9);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 22px rgba(255,122,217,0.45);
+}
+.milestone.is-combo {
+  color: #140c00;
+  background: linear-gradient(180deg, #ffe08a, #ff9f43);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 26px rgba(255,159,67,0.55);
+  font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+}
+@keyframes milestoneIn {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(0.85); }
+  18% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.06); }
+  70% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.96); }
+}
+
+.card.is-magnet {
+  z-index: 3;
+  transition: transform 0.38s cubic-bezier(0.2, 0.85, 0.25, 1);
+  transform: translate3d(var(--mx, 0), var(--my, 0), 0) scale(1.05);
+  filter: brightness(1.12) saturate(1.15);
+}
+.card.is-magnet .face-front {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--good) 70%, transparent),
+    0 0 24px color-mix(in srgb, var(--good) 40%, transparent);
+}
+
+.score-fly {
+  position: absolute;
+  z-index: 16;
+  pointer-events: none;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #9be7ff;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.55), 0 0 14px rgba(120,210,255,0.55);
+  transform: translate(-50%, -50%);
+  animation: scoreFly 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  white-space: nowrap;
+}
+@keyframes scoreFly {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--fly-x, 0px)), calc(-50% + var(--fly-y, -80px))) scale(0.55);
+  }
+}
+
+.hud {
+  touch-action: pan-y;
+}
+.hud::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 36px;
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.18);
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0;
+}
+@media (max-width: 520px) {
+  .hud { position: relative; }
+  .hud::after { opacity: 1; }
+  .milestone { top: calc(var(--safe-t, 0px) + 58px); padding: 7px 14px; }
+  .score-fly { font-size: 0.95rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .touch-ripple, .milestone, .score-fly, .card.is-magnet { animation: none !important; }
+  .card.is-magnet { transform: none; filter: none; }
+  .milestone { opacity: 1; }
+}
