@@ -1781,3 +1781,13 @@ html[data-theme="comida"] .face-front {
   .card.is-magnet { transform: none; filter: none; }
   .milestone { opacity: 1; }
 }
+
+/* Onda 6: par dourado, estrelas animadas */
+.card.is-gold .face-front { box-shadow: inset 0 0 0 3px #f3c94a, 0 0 18px rgba(243,201,74,.55); }
+.card.is-gold.is-flipped .face-front::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.55) 48%, transparent 66%); background-size: 250% 100%; animation: gold-sheen 1.6s ease-in-out infinite; }
+@keyframes gold-sheen { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
+#win-stars .win-star { display: inline-block; opacity: .3; }
+#win-stars .win-star.is-on { opacity: 0; color: #f3c94a; text-shadow: 0 0 16px rgba(243,201,74,.85); animation: win-star-in .45s cubic-bezier(.2,1.7,.4,1) forwards; animation-delay: calc(.38s + var(--i) * .3s); }
+@keyframes win-star-in { 0% { opacity: 0; transform: scale(2.6) rotate(-35deg); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .card.is-gold.is-flipped .face-front::before { animation: none; } #win-stars .win-star.is-on { animation: none; opacity: 1; } }

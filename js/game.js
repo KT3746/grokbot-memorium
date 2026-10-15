@@ -686,6 +686,8 @@ function updateProgress() {
     ]));
 
     state.cards = deck;
+    // Onda 6: um par dourado secreto por partida (só aparece quando a carta vira)
+    state.goldPair = Math.floor(Math.random() * diff.pairs);
     state.flipped = [];
     state.lock = false;
     state.moves = 0;
@@ -728,7 +730,7 @@ function updateProgress() {
     deck.forEach((card, index) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "card";
+      btn.className = card.pairId === state.goldPair ? "card is-gold" : "card";
       btn.dataset.index = String(index);
       btn.setAttribute("role", "gridcell");
       btn.setAttribute("aria-label", `Carta ${index + 1}, virada para baixo`);
@@ -907,6 +909,18 @@ function updateProgress() {
       state.lock = false;
 
       let gained = awardMatchPoints();
+      if (ca.pairId === state.goldPair) {
+        state.score += 100;
+        gained += 100;
+        updateScoreUI();
+        bumpScore();
+        showMilestone("Par dourado! +100", "combo");
+        try { navigator.vibrate?.([14, 30, 14, 30, 26]); } catch (_) {}
+        if (window.MemoriumConfetti && !prefersReducedMotion()) {
+          const r = na.getBoundingClientRect();
+          MemoriumConfetti.burst({ count: 40, y: r.top + r.height / 2 });
+        }
+      }
       if (fromMemory) {
         state.score += 50;
         gained += 50;
@@ -1107,7 +1121,12 @@ function updateProgress() {
       el.winSummary.textContent = `${modeLabel} · ${DIFFS[state.difficulty].label} · ${themeName} · ${pairs} pares`;
     }
     const starRecord = saveStars(stars);
-    el.winStars.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
+    // Onda 6: estrelas acendem uma a uma + placar contando
+    el.winStars.innerHTML = [0, 1, 2].map((i) =>
+      `<span class="win-star${i < stars ? " is-on" : ""}" style="--i:${i}">${i < stars ? "★" : "☆"}</span>`).join("");
+    for (let i = 0; i < stars; i++) {
+      setTimeout(() => { try { navigator.vibrate?.(12); MemoriumAudio.flip(); } catch (_) {} }, 380 + i * 300);
+    }
     el.winStars.classList.toggle("is-new", starRecord);
     if (el.nextBtn) {
       const idx = DIFF_ORDER.indexOf(state.difficulty);
@@ -1121,7 +1140,19 @@ function updateProgress() {
       }
     }
     el.winStars.setAttribute("aria-label", `${stars} de 3 estrelas`);
-    if (el.winScore) el.winScore.textContent = String(state.score);
+    if (el.winScore) {
+      const target = state.score;
+      if (prefersReducedMotion() || target <= 0) el.winScore.textContent = String(target);
+      else {
+        const t0 = performance.now();
+        const tick = (now) => {
+          const k = Math.min(1, (now - t0) / 1100);
+          el.winScore.textContent = String(Math.round(target * (1 - Math.pow(1 - k, 3))));
+          if (k < 1 && el.winScore.isConnected) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }
     el.winMoves.textContent = String(state.moves);
     el.winTimeLabel.textContent = state.mode === "timed" ? "Sobra" : "Tempo";
     el.winTime.textContent = state.mode === "timed" ? formatTime(state.timeLeft) : formatTime(state.elapsed);
