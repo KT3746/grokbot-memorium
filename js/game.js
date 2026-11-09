@@ -458,6 +458,11 @@
     const pairs = DIFFS[state.difficulty].pairs;
     if (!pairs) return;
     const left = pairs - state.matches;
+    /* Onda 7: primeiro par */
+    if (!state.milestoneFirst && state.matches === 1) {
+      state.milestoneFirst = true;
+      showMilestone("Primeiro par!", "combo");
+    }
     if (!state.milestoneHalf && state.matches >= Math.ceil(pairs / 2) && left > 2) {
       state.milestoneHalf = true;
       showMilestone("Meio caminho!", "half");
@@ -704,6 +709,8 @@ function updateProgress() {
     state.seen = new Set();
     state.milestoneHalf = false;
     state.milestoneNear = false;
+    state.milestoneFirst = false;
+    state.mismatches = 0;
     state.lastComboBanner = 0;
     hideMilestone();
     closePause(false);
@@ -716,7 +723,7 @@ function updateProgress() {
     el.hint.disabled = false;
     el.hint.style.opacity = "1";
     if (el.hintBadge) el.hintBadge.textContent = "1";
-    el.hint.classList.remove("is-spent");
+    el.hint.classList.remove("is-spent", "is-suggest");
     updateProgress();
     updateLeftChip();
     updateScoreUI();
@@ -899,6 +906,7 @@ function updateProgress() {
       if (state.bestStreak > 0) saveBestCombo(state.bestStreak);
       updateProgress();
       updateLeftChip();
+      checkMilestones();
       const left = DIFFS[state.difficulty].pairs - state.matches;
       if (left > 0 && left <= 3) el.board.classList.add("is-dim");
       na.disabled = true;
@@ -947,6 +955,11 @@ function updateProgress() {
       if (state.matches === DIFFS[state.difficulty].pairs) endGame();
     } else {
       MemoriumAudio.miss();
+      state.mismatches = (state.mismatches || 0) + 1;
+      /* Onda 7: após 3 erros, a dica pisca pedindo ajuda */
+      if (!state.hintUsed && state.mismatches >= 3 && el.hint) {
+        el.hint.classList.add("is-suggest");
+      }
       try { navigator.vibrate?.([12, 40, 12]); } catch (_) {}
       const app = document.getElementById("app");
       app.classList.remove("is-shake");
@@ -1046,6 +1059,7 @@ function updateProgress() {
     if (!pair) return;
 
     state.hintUsed = true;
+    if (el.hint) el.hint.classList.remove("is-suggest");
     state.moves += 2;
     el.moves.textContent = String(state.moves);
     el.hint.disabled = true;
@@ -1118,7 +1132,10 @@ function updateProgress() {
     if (el.winSummary) {
       const modeLabel = state.mode === "timed" ? "Relógio" : "Clássico";
       const themeName = window.MEMORIUM_THEMES[state.theme]?.name || state.theme;
-      el.winSummary.textContent = `${modeLabel} · ${DIFFS[state.difficulty].label} · ${themeName} · ${pairs} pares`;
+      const errs = state.mismatches || 0;
+      const errBit = errs === 0 ? " · sem erros!" : ` · ${errs} erro${errs === 1 ? "" : "s"}`;
+      el.winSummary.textContent = `${modeLabel} · ${DIFFS[state.difficulty].label} · ${themeName} · ${pairs} pares${errBit}`;
+      el.winSummary.classList.toggle("is-clean", errs === 0);
     }
     const starRecord = saveStars(stars);
     // Onda 6: estrelas acendem uma a uma + placar contando

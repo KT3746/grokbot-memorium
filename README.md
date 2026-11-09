@@ -4,7 +4,7 @@ Jogo da memória premium no navegador. Original, em português do Brasil. PC e c
 
 ## Jogar
 
-**Live:** https://kt3746.github.io/grokbot-memorium/?v=202610142325
+**Live:** https://kt3746.github.io/grokbot-memorium/?v=202611090926
 
 - Modos: **Clássico** e **Relógio** (cada par soma tempo)
 - Temas: Cosmos, Flora, Runas, Neon, Comida
@@ -13,6 +13,14 @@ Jogo da memória premium no navegador. Original, em português do Brasil. PC e c
 - Fundo ambiente em **Three.js** (baixo-poli, local, sem CDN). Se o aparelho não tiver WebGL, o jogo segue com os orbes 2D de CSS.
 
 **Portal:** https://kt3746.github.io/grokbot-portal/
+
+## Onda 7
+
+- **Marcos ligados**: primeiro par, meio caminho, quase lá / último par e combo agora aparecem de verdade
+- **Dica sugerida**: depois de 3 erros o botão Dica pisca
+- **Sem erros!** no resumo da vitória quando a partida saiu limpa
+
+Cache `?v=202611090926`.
 
 ## Visual 3D
 
