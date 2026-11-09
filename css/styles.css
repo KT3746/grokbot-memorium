@@ -1791,3 +1791,18 @@ html[data-theme="comida"] .face-front {
 #win-stars .win-star.is-on { opacity: 0; color: #f3c94a; text-shadow: 0 0 16px rgba(243,201,74,.85); animation: win-star-in .45s cubic-bezier(.2,1.7,.4,1) forwards; animation-delay: calc(.38s + var(--i) * .3s); }
 @keyframes win-star-in { 0% { opacity: 0; transform: scale(2.6) rotate(-35deg); } 100% { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .card.is-gold.is-flipped .face-front::before { animation: none; } #win-stars .win-star.is-on { animation: none; opacity: 1; } }
+
+
+/* ===== Onda 7: dica sugerida, resumo sem erros ===== */
+#btn-hint.is-suggest {
+  animation: mem-hint-suggest 1.1s ease-in-out infinite;
+  box-shadow: 0 0 0 2px rgba(255, 214, 120, 0.7), 0 0 18px rgba(255, 200, 80, 0.45);
+}
+@keyframes mem-hint-suggest {
+  0%, 100% { transform: translateY(0); filter: brightness(1); }
+  50% { transform: translateY(-2px); filter: brightness(1.15); }
+}
+#win-summary.is-clean { color: #9dffe0; }
+@media (prefers-reduced-motion: reduce) {
+  #btn-hint.is-suggest { animation: none; }
+}
