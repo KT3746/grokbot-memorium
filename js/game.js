@@ -328,6 +328,8 @@
     if (state.missTimer) {
       clearTimeout(state.missTimer);
       state.missTimer = null;
+      state.missResolve = null;
+      state.missPair = null;
     }
     if (state.hintTimer) {
       clearTimeout(state.hintTimer);
@@ -669,9 +671,27 @@ function updateProgress() {
       if (state.timeLeft >= 8) return 2;
       return 1;
     }
-    if (moves <= perfect + 2) return 3;
-    if (moves <= perfect * 2) return 2;
+    if (moves <= starLimit3(pairs)) return 3;
+    if (moves <= starLimit2(pairs)) return 2;
     return 1;
+  }
+
+  /* onda 8: 3★ alcançável com boa memória (antes exigia sorte: pares+2) */
+  function starLimit3(pairs) { return Math.round(pairs * 1.6); }
+  function starLimit2(pairs) { return pairs * 2; }
+
+  /* onda 8: meta de estrelas visível embaixo de Movimentos */
+  function updateStarGoal() {
+    const g = document.getElementById("stat-goal");
+    if (!g) return;
+    if (state.mode === "timed") { g.hidden = true; return; }
+    const pairs = DIFFS[state.difficulty].pairs;
+    const l3 = starLimit3(pairs), l2 = starLimit2(pairs);
+    g.hidden = false;
+    g.classList.remove("is-lost");
+    if (state.moves <= l3) g.textContent = `★★★ até ${l3}`;
+    else if (state.moves <= l2) g.textContent = `★★ até ${l2}`;
+    else { g.textContent = "★ termine!"; g.classList.add("is-lost"); }
   }
 
   function buildBoard() {
@@ -711,12 +731,14 @@ function updateProgress() {
     state.milestoneNear = false;
     state.milestoneFirst = false;
     state.mismatches = 0;
+    state.forgets = 0;
     state.lastComboBanner = 0;
     hideMilestone();
     closePause(false);
 
     el.moves.textContent = "0";
     el.streak.textContent = "0";
+    setTimeout(updateStarGoal, 0);
     document.querySelector(".hud")?.classList.remove("is-hot");
     el.timeLabel.textContent = state.mode === "timed" ? "Restante" : "Tempo";
     paintTime();
@@ -812,6 +834,15 @@ function updateProgress() {
   }
 
   function onCardClick(index) {
+    if (state.lock && state.missTimer && state.missResolve && !state.ended
+        && state.missPair && !state.missPair.includes(index)
+        && performance.now() - (state.missAt || 0) > 260) {
+      const tapped = getCardEl(index);
+      if (tapped && !tapped.classList.contains("is-flipped") && !tapped.classList.contains("is-matched")) {
+        clearTimeout(state.missTimer);
+        state.missResolve();
+      }
+    }
     if (state.lock || state.ended || state.dealLock) return;
     const node = getCardEl(index);
     if (!node || node.classList.contains("is-flipped") || node.classList.contains("is-matched")) return;
@@ -848,6 +879,7 @@ function updateProgress() {
 
     state.moves += 1;
     el.moves.textContent = String(state.moves);
+    updateStarGoal();
     state.lock = true;
 
     const [a, b] = state.flipped;
@@ -956,8 +988,9 @@ function updateProgress() {
     } else {
       MemoriumAudio.miss();
       state.mismatches = (state.mismatches || 0) + 1;
-      /* Onda 7: após 3 erros, a dica pisca pedindo ajuda */
-      if (!state.hintUsed && state.mismatches >= 3 && el.hint) {
+      /* onda 8: erro de verdade = já tinha visto o par (descobrir carta nova não é erro) */
+      if (missedKnown) state.forgets = (state.forgets || 0) + 1;
+      if (!state.hintUsed && state.forgets >= 2 && el.hint) {
         el.hint.classList.add("is-suggest");
       }
       try { navigator.vibrate?.([12, 40, 12]); } catch (_) {}
@@ -979,7 +1012,12 @@ function updateProgress() {
       el.board.querySelectorAll(".card.is-anticipate").forEach((c) => c.classList.remove("is-anticipate"));
       na.classList.add("is-miss");
       nb.classList.add("is-miss");
-      state.missTimer = setTimeout(() => {
+      /* onda 8: tocar outra carta durante o erro vira as duas na hora (sem espera morta) */
+      state.missAt = performance.now();
+      state.missPair = [a, b];
+      const resolveMiss = () => {
+        state.missResolve = null;
+        state.missPair = null;
         state.missTimer = null;
         if (!na.isConnected || !nb.isConnected) return;
         na.classList.remove("is-flipped", "is-miss");
@@ -994,7 +1032,9 @@ function updateProgress() {
         });
         state.flipped = [];
         state.lock = false;
-      }, 900);
+      };
+      state.missResolve = resolveMiss;
+      state.missTimer = setTimeout(resolveMiss, 900);
     }
   }
 
@@ -1022,11 +1062,15 @@ function updateProgress() {
       const rb = nb.getBoundingClientRect();
       const cx = (ra.left + ra.right + rb.left + rb.right) / 4 - g.left;
       const cy = (ra.top + ra.bottom + rb.top + rb.bottom) / 4 - g.top;
-      const pad = 70;
-      pop.style.left = `${Math.max(pad, Math.min(g.width - pad, cx))}px`;
+      pop.style.left = `${cx}px`;
       pop.style.top = `${Math.max(40, cy)}px`;
+      el.game.appendChild(pop);
+      /* onda 8: mede o texto e mantém o aviso inteiro dentro da tela */
+      const half = pop.offsetWidth / 2 + 8;
+      pop.style.left = `${Math.max(half, Math.min(g.width - half, cx))}px`;
+    } else {
+      el.game.appendChild(pop);
     }
-    el.game.appendChild(pop);
     setTimeout(() => pop.remove(), 950);
   }
 
@@ -1132,8 +1176,8 @@ function updateProgress() {
     if (el.winSummary) {
       const modeLabel = state.mode === "timed" ? "Relógio" : "Clássico";
       const themeName = window.MEMORIUM_THEMES[state.theme]?.name || state.theme;
-      const errs = state.mismatches || 0;
-      const errBit = errs === 0 ? " · sem erros!" : ` · ${errs} erro${errs === 1 ? "" : "s"}`;
+      const errs = state.forgets || 0;
+      const errBit = errs === 0 ? " · sem esquecer nenhum par!" : ` · ${errs} par${errs === 1 ? "" : "es"} esquecido${errs === 1 ? "" : "s"}`;
       el.winSummary.textContent = `${modeLabel} · ${DIFFS[state.difficulty].label} · ${themeName} · ${pairs} pares${errBit}`;
       el.winSummary.classList.toggle("is-clean", errs === 0);
     }
@@ -1145,6 +1189,18 @@ function updateProgress() {
       setTimeout(() => { try { navigator.vibrate?.(12); MemoriumAudio.flip(); } catch (_) {} }, 380 + i * 300);
     }
     el.winStars.classList.toggle("is-new", starRecord);
+    const tipEl = document.getElementById("win-star-tip");
+    if (tipEl) {
+      if (stars < 3 && state.mode !== "timed") {
+        tipEl.hidden = false;
+        tipEl.textContent = `3 estrelas: até ${starLimit3(pairs)} movimentos (você fez ${state.moves}).`;
+      } else if (stars < 3) {
+        tipEl.hidden = false;
+        tipEl.textContent = `3 estrelas: termine com ${Math.ceil(DIFFS[state.difficulty].timedStart * 0.35)}s ou mais sobrando.`;
+      } else {
+        tipEl.hidden = true;
+      }
+    }
     if (el.nextBtn) {
       const idx = DIFF_ORDER.indexOf(state.difficulty);
       const next = DIFF_ORDER[idx + 1];
@@ -1467,6 +1523,8 @@ function updateProgress() {
         if (state.missTimer) {
           clearTimeout(state.missTimer);
           state.missTimer = null;
+          state.missResolve = null;
+          state.missPair = null;
         }
         if (state.hintTimer) {
           clearTimeout(state.hintTimer);

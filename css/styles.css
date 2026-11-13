@@ -1806,3 +1806,15 @@ html[data-theme="comida"] .face-front {
 @media (prefers-reduced-motion: reduce) {
   #btn-hint.is-suggest { animation: none; }
 }
+
+/* ===== Onda 8: meta de estrelas, dica de estrelas ===== */
+.stat-goal[hidden], .win-star-tip[hidden] { display: none !important; }
+.stat-goal {
+  font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em; line-height: 1.1;
+  display: block; color: var(--accent); white-space: nowrap; margin-top: 1px;
+}
+.stat-goal.is-lost { color: var(--muted, #9aa3b8); }
+.win-star-tip { margin: -4px 0 12px; font-size: 0.85rem; font-weight: 600; color: var(--muted, #9aa3b8); text-align: center; }
+/* onda 8: figura maior na carta (reconhecer de relance no celular) */
+.face-front .glyph { width: 88%; height: 88%; }
+.face-front .glyph svg { max-width: 100%; max-height: 100%; }
